@@ -3,7 +3,7 @@ const canvas = document.getElementById('drawingCanvas');
 const ctx = canvas.getContext('2d');
 let isDrawing = false;
 let lastX = 0, lastY = 0;
-let savedImageData = null;  // for shapes preview
+let savedImageData = null;  // For shapes preview
 let currentTool = document.getElementById('tool').value;
 let currentBrush = document.getElementById('brushType').value;
 let undoStack = [];
@@ -49,7 +49,6 @@ function hexToRgba(hex, opacity) {
   const b = bigint & 255;
   return `rgba(${r},${g},${b},${opacity/100})`;
 }
-// Convert hex and opacity to an array [r, g, b, a]
 function hexToRgbaArray(hex, opacity) {
   hex = hex.replace('#','');
   if(hex.length === 3) hex = hex.split('').map(c => c+c).join('');
@@ -60,91 +59,131 @@ function hexToRgbaArray(hex, opacity) {
   const a = opacity / 100 * 255;
   return [r, g, b, a];
 }
+function matchColors(a, b) {
+  return a[0]===b[0] && a[1]===b[1] && a[2]===b[2] && a[3]===b[3];
+}
+function matchColorsAt(index, targetColor, data) {
+  return (
+    data[index] === targetColor[0] &&
+    data[index+1] === targetColor[1] &&
+    data[index+2] === targetColor[2] &&
+    data[index+3] === targetColor[3]
+  );
+}
+function setPixelColor(index, color, data) {
+  data[index] = color[0];
+  data[index+1] = color[1];
+  data[index+2] = color[2];
+  data[index+3] = color[3];
+}
 
-// ----- FLOOD FILL ALGORITHM -----
+// ----- REVISED FLOOD FILL ALGORITHM -----
 function floodFill(startX, startY, fillColor) {
-  const pixelStack = [[startX, startY]];
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const data = imageData.data;
   const width = canvas.width;
-
-  // Get the target color at the start position.
+  const height = canvas.height;
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const data = imageData.data;
+  const stack = [];
   const startPos = (startY * width + startX) * 4;
   const targetColor = data.slice(startPos, startPos + 4);
   const fillColorArr = hexToRgbaArray(fillColor, opacityInput.value);
 
-  // If the target color is the same as fill color, no need to fill.
-  if (targetColor[0] === fillColorArr[0] &&
-      targetColor[1] === fillColorArr[1] &&
-      targetColor[2] === fillColorArr[2] &&
-      targetColor[3] === fillColorArr[3]) {
-    return;
-  }
+  if (matchColors(targetColor, fillColorArr)) return; 
 
-  function matchColor(index) {
-    return (
-      data[index] === targetColor[0] &&
-      data[index + 1] === targetColor[1] &&
-      data[index + 2] === targetColor[2] &&
-      data[index + 3] === targetColor[3]
-    );
-  }
+  stack.push([startX, startY]);
 
-  function setColor(index) {
-    data[index] = fillColorArr[0];
-    data[index + 1] = fillColorArr[1];
-    data[index + 2] = fillColorArr[2];
-    data[index + 3] = fillColorArr[3];
-  }
-
-  while(pixelStack.length) {
-    const [x, y] = pixelStack.pop();
-    let currentPos = (y * width + x) * 4;
-
-    // Move up as long as the color matches.
-    while(y >= 0 && matchColor(currentPos)) {
+  while (stack.length) {
+    let [x, y] = stack.pop();
+    let pixelPos = (y * width + x) * 4;
+    // Move up until the color changes.
+    while (y >= 0 && matchColorsAt(pixelPos, targetColor, data)) {
       y--;
-      currentPos -= width * 4;
+      pixelPos -= width * 4;
     }
     y++;
-    currentPos += width * 4;
-
+    pixelPos += width * 4;
     let reachLeft = false;
     let reachRight = false;
+    while (y < height && matchColorsAt(pixelPos, targetColor, data)) {
+      setPixelColor(pixelPos, fillColorArr, data);
 
-    while(y < canvas.height && matchColor(currentPos)) {
-      setColor(currentPos);
-
-      // Check left pixel.
-      if(x > 0) {
-        if(matchColor(currentPos - 4)) {
-          if(!reachLeft) {
-            pixelStack.push([x - 1, y]);
+      if (x > 0) {
+        if (matchColorsAt(pixelPos - 4, targetColor, data)) {
+          if (!reachLeft) {
+            stack.push([x - 1, y]);
             reachLeft = true;
           }
-        } else if(reachLeft) {
+        } else {
           reachLeft = false;
         }
       }
-      
-      // Check right pixel.
-      if(x < width - 1) {
-        if(matchColor(currentPos + 4)) {
-          if(!reachRight) {
-            pixelStack.push([x + 1, y]);
+      if (x < width - 1) {
+        if (matchColorsAt(pixelPos + 4, targetColor, data)) {
+          if (!reachRight) {
+            stack.push([x + 1, y]);
             reachRight = true;
           }
-        } else if(reachRight) {
+        } else {
           reachRight = false;
         }
       }
-
       y++;
-      currentPos += width * 4;
+      pixelPos += width * 4;
     }
   }
-
   ctx.putImageData(imageData, 0, 0);
+}
+
+// ----- STAR & HEART SHAPE FUNCTIONS -----
+function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
+  let rot = Math.PI / 2 * 3;
+  let x = cx;
+  let y = cy;
+  let step = Math.PI / spikes;
+  
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - outerRadius);
+  for (let i = 0; i < spikes; i++) {
+    x = cx + Math.cos(rot) * outerRadius;
+    y = cy + Math.sin(rot) * outerRadius;
+    ctx.lineTo(x, y);
+    rot += step;
+    
+    x = cx + Math.cos(rot) * innerRadius;
+    y = cy + Math.sin(rot) * innerRadius;
+    ctx.lineTo(x, y);
+    rot += step;
+  }
+  ctx.closePath();
+  ctx.stroke();
+}
+
+function drawHeart(cx, cy, width, height) {
+  ctx.beginPath();
+  const topCurveHeight = height * 0.3;
+  ctx.moveTo(cx, cy + topCurveHeight);
+  ctx.bezierCurveTo(
+    cx, cy, 
+    cx - width / 2, cy, 
+    cx - width / 2, cy + topCurveHeight
+  );
+  ctx.bezierCurveTo(
+    cx - width / 2, cy + (height + topCurveHeight) / 2, 
+    cx, cy + (height + topCurveHeight) / 2, 
+    cx, cy + height
+  );
+  ctx.bezierCurveTo(
+    cx, cy + (height + topCurveHeight) / 2, 
+    cx + width / 2, cy + (height + topCurveHeight) / 2, 
+    cx + width / 2, cy + topCurveHeight
+  );
+  ctx.bezierCurveTo(
+    cx + width / 2, cy, 
+    cx, cy, 
+    cx, cy + topCurveHeight
+  );
+  ctx.closePath();
+  ctx.stroke();
 }
 
 // ----- EVENT LISTENERS & HANDLERS -----
@@ -177,12 +216,10 @@ toolSelect.addEventListener('change', () => {
   currentTool = toolSelect.value;
   shapeOptionsDiv.style.display = (currentTool === 'shape') ? 'inline-block' : 'none';
 });
-
 // Update brush type
 brushTypeSelect.addEventListener('change', () => {
   currentBrush = brushTypeSelect.value;
 });
-
 // Update canvas background
 backgroundPatternSelect.addEventListener('change', () => {
   const pattern = backgroundPatternSelect.value;
@@ -300,26 +337,14 @@ const brushFunctions = {
     }
   },
   star(e, x, y, size, color, opacity) {
-    ctx.fillStyle = hexToRgba(color, opacity);
-    ctx.beginPath();
-    for (let i = 0; i < 5; i++) {
-      ctx.lineTo(x + size * Math.cos((18 + 72 * i) * Math.PI/180),
-                 y - size * Math.sin((18 + 72 * i) * Math.PI/180));
-      ctx.lineTo(x + (size/2) * Math.cos((54 + 72 * i) * Math.PI/180),
-                 y - (size/2) * Math.sin((54 + 72 * i) * Math.PI/180));
-    }
-    ctx.closePath();
-    ctx.fill();
+    // For star brush, we simply call our drawStar helper.
+    ctx.strokeStyle = hexToRgba(color, opacity);
+    drawStar(x, y, 5, size, size/2);
   },
   heart(e, x, y, size, color, opacity) {
-    ctx.fillStyle = hexToRgba(color, opacity);
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.bezierCurveTo(x, y - size/2, x - size, y - size/2, x - size, y);
-    ctx.bezierCurveTo(x - size, y + size/2, x, y + size, x, y + size*1.2);
-    ctx.bezierCurveTo(x, y + size, x + size, y + size/2, x + size, y);
-    ctx.bezierCurveTo(x + size, y - size/2, x, y - size/2, x, y);
-    ctx.fill();
+    // For heart brush, we call our drawHeart helper.
+    ctx.strokeStyle = hexToRgba(color, opacity);
+    drawHeart(x, y, size, size);
   },
   zigzag(e, x, y, size, color, opacity) {
     ctx.strokeStyle = hexToRgba(color, opacity);
@@ -347,11 +372,11 @@ const brushFunctions = {
 // ----- DRAWING HANDLERS -----
 // General drawing (only if not using shape or fill tool)
 canvas.addEventListener('mousedown', (e) => {
-  if (currentTool === 'shape' || currentTool === 'fill') return; // skip general drawing for these tools
+  if (currentTool === 'shape' || currentTool === 'fill') return;
   const rect = canvas.getBoundingClientRect();
   lastX = e.clientX - rect.left;
   lastY = e.clientY - rect.top;
-  saveState(); // save before starting drawing
+  saveState(); // Save before drawing
   isDrawing = true;
   ctx.beginPath();
   ctx.moveTo(lastX, lastY);
@@ -365,7 +390,6 @@ canvas.addEventListener('mousemove', (e) => {
   const opacity = parseFloat(opacityInput.value);
   const color = brushColorInput.value;
   
-  // Set composite mode based on tool
   ctx.globalCompositeOperation = (currentTool === 'eraser') ? 'destination-out' : 'source-over';
   
   if (symmetryCheckbox.checked) {
@@ -386,7 +410,6 @@ canvas.addEventListener('mousemove', (e) => {
 canvas.addEventListener('mouseup', (e) => {
   if (isDrawing) {
     isDrawing = false;
-    // Save state after drawing is complete.
     saveState();
   }
 });
@@ -397,13 +420,13 @@ canvas.addEventListener('mouseout', (e) => {
   }
 });
 
-// ----- FILL TOOL HANDLER (FLOOD FILL) -----
+// ----- FILL TOOL HANDLER (Flood Fill) -----
 canvas.addEventListener('mousedown', (e) => {
   if (currentTool === 'fill') {
     const rect = canvas.getBoundingClientRect();
     const x = Math.floor(e.clientX - rect.left);
     const y = Math.floor(e.clientY - rect.top);
-    saveState(); // save state before filling
+    saveState();
     floodFill(x, y, brushColorInput.value);
   }
 });
@@ -424,22 +447,22 @@ canvas.addEventListener('mousemove', (e) => {
   const rect = canvas.getBoundingClientRect();
   const currX = e.clientX - rect.left;
   const currY = e.clientY - rect.top;
-  // Restore saved state for live preview of shape.
   ctx.putImageData(savedImageData, 0, 0);
   ctx.strokeStyle = hexToRgba(brushColorInput.value, opacityInput.value);
   ctx.lineWidth = parseInt(brushSizeInput.value);
+  
   let shape = shapeTypeSelect.value;
   let w = currX - lastX;
   let h = currY - lastY;
   if (shape === 'line' || shape === 'dottedLine') {
     ctx.beginPath();
     ctx.moveTo(lastX, lastY);
+    if (shape === 'dottedLine') ctx.setLineDash([4,4]);
     ctx.lineTo(currX, currY);
-    if (shape === 'dottedLine') ctx.setLineDash([5,5]);
     ctx.stroke();
     ctx.setLineDash([]);
   } else if (shape === 'rectangle' || shape === 'dottedRectangle') {
-    if (shape === 'dottedRectangle') ctx.setLineDash([5,5]);
+    if (shape === 'dottedRectangle') ctx.setLineDash([4,4]);
     ctx.strokeRect(lastX, lastY, w, h);
     ctx.setLineDash([]);
   } else if (shape === 'circle') {
@@ -451,12 +474,18 @@ canvas.addEventListener('mousemove', (e) => {
     ctx.beginPath();
     ctx.ellipse(lastX + w/2, lastY + h/2, Math.abs(w/2), Math.abs(h/2), 0, 0, Math.PI*2);
     ctx.stroke();
+  } else if (shape === 'star') {
+    // Use the average distance as radius.
+    let r = Math.max(Math.abs(w), Math.abs(h));
+    drawStar(lastX, lastY, 5, r, r/2);
+  } else if (shape === 'heart') {
+    // Draw heart with width and height based on drag.
+    drawHeart(lastX, lastY, Math.abs(w), Math.abs(h));
   }
 });
 canvas.addEventListener('mouseup', (e) => {
   if (currentTool === 'shape' && shapeActive) {
     shapeActive = false;
-    // Save state after drawing shape.
     saveState();
   }
 });
@@ -490,7 +519,5 @@ document.addEventListener('keydown', (e) => {
   else if (key === 'f') { toolSelect.value = 'fill'; currentTool = 'fill'; }
   else if (key === 's') { toolSelect.value = 'shape'; currentTool = 'shape'; }
   else if (key === 'y') { symmetryCheckbox.checked = !symmetryCheckbox.checked; }
-  else if (key === 'z') { // Shortcut for undo/back function
-    undo();
-  }
+  else if (key === 'z') { undo(); }
 });
