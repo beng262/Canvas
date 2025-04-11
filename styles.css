@@ -23,7 +23,7 @@ header h1 {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  background-color: linear-gradient(90deg, #A3D3FF, #FFB2F7, #C3B9FF);
+  background-color: rgba(255,255,255,0.9);
   padding: 10px;
   border-radius: 8px;
   margin: 10px auto;
@@ -81,10 +81,10 @@ button:hover {
   background: repeating-linear-gradient(0deg, #fff, #fff 23px, #d1d1d1 24px);
 }
 .canvas-container.pastel {
-  background: linear-gradient(45deg, #A3D3FF 25%, transparent 25%) -50px 0,
-              linear-gradient(-45deg, #FFB2F7 25%, transparent 25%) -50px 0,
-              linear-gradient(45deg, transparent 75%, #C3B9FF 75%),
-              linear-gradient(-45deg, transparent 75%, #C3B9FF 75%);
+  background: linear-gradient(45deg, #A3D3FF 25%, transparent 100%) -50px 0,
+              linear-gradient(-45deg, #FFB2F7 25%, transparent 100%) -50px 0,
+              linear-gradient(45deg, transparent 100%, #C3B9FF 75%),
+              linear-gradient(-45deg, transparent 100%, #C3B9FF 75%);
   background-size: 100px 100px;
 }
 .canvas-container.fabric {
