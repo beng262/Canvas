@@ -187,15 +187,19 @@ function drawHeart(cx, cy, size) {
 }
 
 // ----- DARK MODE TOGGLE HANDLER -----
-darkModeToggle.addEventListener('click', () => {
-  document.body.classList.toggle('dark');
-  // Swap icon: show moon (🌙) for dark mode, sun (☀) for light mode.
-  if(document.body.classList.contains('dark')){
-    darkModeToggle.textContent = '🌙';
+document.addEventListener("DOMContentLoaded", function() {
+  const darkModeToggle = document.getElementById('darkModeToggle');
+  if(darkModeToggle){
+    darkModeToggle.addEventListener('click', function() {
+      document.body.classList.toggle('dark');
+      // Swap icon: show moon for dark mode, sun for light mode
+      darkModeToggle.textContent = document.body.classList.contains('dark') ? '🌙' : '☀';
+    });
   } else {
-    darkModeToggle.textContent = '☀';
+    console.error('Dark mode toggle button not found!');
   }
 });
+
 
 // ----- EVENT LISTENERS & HANDLERS -----
 // Update brush size & opacity display
