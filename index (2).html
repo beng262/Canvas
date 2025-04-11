@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DrawNow!</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <h1>DrawNow!</h1>
+  </header>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <!-- Brush size & opacity -->
+    <div class="toolbar-item">
+      <label for="brushSize">Brush Size:</label>
+      <input type="range" id="brushSize" min="1" max="50" value="10">
+      <span id="brushSizeValue">10</span>
+    </div>
+    <div class="toolbar-item">
+      <label for="opacity">Opacity:</label>
+      <input type="range" id="opacity" min="0" max="100" value="100">
+      <span id="opacityValue">100</span>
+    </div>
+    <!-- Color picker & recent colors -->
+    <div class="toolbar-item">
+      <label for="brushColor">Color:</label>
+      <input type="color" id="brushColor" value="#000000">
+      <div id="recentColors"></div>
+    </div>
+    <!-- Tool selector  -->
+    <div class="toolbar-item">
+      <label for="tool">Tool:</label>
+      <select id="tool">
+        <option value="pen">Pen</option>
+        <option value="eraser">Eraser</option>
+        <option value="fill">Fill</option>
+        <option value="shape">Shapes</option>
+      </select>
+    </div>
+    <!-- Brush types – 20 unique brushes -->
+    <div class="toolbar-item">
+      <label for="brushType">Brush Type:</label>
+      <select id="brushType">
+        <option value="round">Round</option>
+        <option value="square">Square</option>
+        <option value="dotted">Dotted</option>
+        <option value="spray">Spray</option>
+        <option value="calligraphy">Calligraphy</option>
+        <option value="splatter">Splatter</option>
+        <option value="watercolor">Watercolor</option>
+        <option value="chalk">Chalk</option>
+        <option value="oil">Oil</option>
+        <option value="pencil">Pencil</option>
+        <option value="neon">Neon</option>
+        <option value="glitter">Glitter</option>
+        <option value="textured">Textured</option>
+        <option value="pattern">Pattern</option>
+        <option value="airbrush">Airbrush</option>
+        <option value="star">Star</option>
+        <option value="heart">Heart</option>
+        <option value="zigzag">Zigzag</option>
+        <option value="scatter">Scatter</option>
+        <option value="crayon">Crayon</option>
+      </select>
+    </div>
+    <!-- Shape options (shown only when tool is "shape") -->
+    <div class="toolbar-item" id="shapeOptions" style="display:none;">
+      <label for="shapeType">Shape:</label>
+      <select id="shapeType">
+        <option value="line">Straight Line</option>
+        <option value="dottedLine">Dotted Line</option>
+        <option value="rectangle">Rectangle</option>
+        <option value="dottedRectangle">Dotted Rectangle</option>
+        <option value="circle">Circle</option>
+        <option value="ellipse">Ellipse</option>
+        <option value="oval">Oval</option>
+      </select>
+    </div>
+    <!-- Canvas Background Options -->
+    <div class="toolbar-item">
+      <label for="backgroundPattern">Canvas Background:</label>
+      <select id="backgroundPattern">
+        <option value="plain">Plain</option>
+        <option value="notebook">Notebook</option>
+        <option value="pastel">Pastel Pattern</option>
+        <option value="fabric">Fabric</option>
+        <option value="paper">Paper</option>
+        <option value="grid">Grid</option>
+        <option value="oldpaper">Old Paper</option>
+        <option value="wood">Wood</option>
+        <option value="marble">Marble</option>
+      </select>
+    </div>
+    <!-- Action Buttons -->
+    <div class="toolbar-item">
+      <button id="newCanvas">New Canvas</button>
+      <button id="clearCanvas">Clear Canvas</button>
+      <button id="downloadCanvas">Download</button>
+    </div>
+    <!-- Symmetry mode (toggle with shortcut Y) -->
+    <div class="toolbar-item">
+      <label>
+        <input type="checkbox" id="symmetry">
+        Symmetry Mode
+      </label>
+    </div>
+  </div>
+
+  <!-- Drawing Canvas Container -->
+  <div class="canvas-container plain" id="canvasContainer">
+    <canvas id="drawingCanvas" width="800" height="600"></canvas>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
