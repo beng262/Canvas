@@ -6,6 +6,7 @@ let lastX = 0, lastY = 0;
 let savedImageData = null;  // for shapes preview
 let currentTool = document.getElementById('tool').value;
 let currentBrush = document.getElementById('brushType').value;
+let undoStack = [];
 
 // UI ELEMENTS
 const brushSizeInput = document.getElementById('brushSize');
@@ -19,12 +20,134 @@ const backgroundPatternSelect = document.getElementById('backgroundPattern');
 const recentColorsDiv = document.getElementById('recentColors');
 const newCanvasButton = document.getElementById('newCanvas');
 const clearCanvasButton = document.getElementById('clearCanvas');
+const undoCanvasButton = document.getElementById('undoCanvas');
 const downloadCanvasButton = document.getElementById('downloadCanvas');
 const shapeOptionsDiv = document.getElementById('shapeOptions');
 const shapeTypeSelect = document.getElementById('shapeType');
 const symmetryCheckbox = document.getElementById('symmetry');
 const canvasContainer = document.getElementById('canvasContainer');
 
+// ----- HISTORY FUNCTIONS -----
+function saveState() {
+  // Save the current canvas state for undo functionality.
+  undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+}
+function undo() {
+  if (undoStack.length) {
+    let prevState = undoStack.pop();
+    ctx.putImageData(prevState, 0, 0);
+  }
+}
+
+// ----- UTILITY FUNCTIONS -----
+function hexToRgba(hex, opacity) {
+  hex = hex.replace('#', '');
+  if(hex.length === 3) hex = hex.split('').map(c => c+c).join('');
+  const bigint = parseInt(hex, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r},${g},${b},${opacity/100})`;
+}
+// Convert hex and opacity to an array [r, g, b, a]
+function hexToRgbaArray(hex, opacity) {
+  hex = hex.replace('#','');
+  if(hex.length === 3) hex = hex.split('').map(c => c+c).join('');
+  const bigint = parseInt(hex, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  const a = opacity / 100 * 255;
+  return [r, g, b, a];
+}
+
+// ----- FLOOD FILL ALGORITHM -----
+function floodFill(startX, startY, fillColor) {
+  const pixelStack = [[startX, startY]];
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  const width = canvas.width;
+
+  // Get the target color at the start position.
+  const startPos = (startY * width + startX) * 4;
+  const targetColor = data.slice(startPos, startPos + 4);
+  const fillColorArr = hexToRgbaArray(fillColor, opacityInput.value);
+
+  // If the target color is the same as fill color, no need to fill.
+  if (targetColor[0] === fillColorArr[0] &&
+      targetColor[1] === fillColorArr[1] &&
+      targetColor[2] === fillColorArr[2] &&
+      targetColor[3] === fillColorArr[3]) {
+    return;
+  }
+
+  function matchColor(index) {
+    return (
+      data[index] === targetColor[0] &&
+      data[index + 1] === targetColor[1] &&
+      data[index + 2] === targetColor[2] &&
+      data[index + 3] === targetColor[3]
+    );
+  }
+
+  function setColor(index) {
+    data[index] = fillColorArr[0];
+    data[index + 1] = fillColorArr[1];
+    data[index + 2] = fillColorArr[2];
+    data[index + 3] = fillColorArr[3];
+  }
+
+  while(pixelStack.length) {
+    const [x, y] = pixelStack.pop();
+    let currentPos = (y * width + x) * 4;
+
+    // Move up as long as the color matches.
+    while(y >= 0 && matchColor(currentPos)) {
+      y--;
+      currentPos -= width * 4;
+    }
+    y++;
+    currentPos += width * 4;
+
+    let reachLeft = false;
+    let reachRight = false;
+
+    while(y < canvas.height && matchColor(currentPos)) {
+      setColor(currentPos);
+
+      // Check left pixel.
+      if(x > 0) {
+        if(matchColor(currentPos - 4)) {
+          if(!reachLeft) {
+            pixelStack.push([x - 1, y]);
+            reachLeft = true;
+          }
+        } else if(reachLeft) {
+          reachLeft = false;
+        }
+      }
+      
+      // Check right pixel.
+      if(x < width - 1) {
+        if(matchColor(currentPos + 4)) {
+          if(!reachRight) {
+            pixelStack.push([x + 1, y]);
+            reachRight = true;
+          }
+        } else if(reachRight) {
+          reachRight = false;
+        }
+      }
+
+      y++;
+      currentPos += width * 4;
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+}
+
+// ----- EVENT LISTENERS & HANDLERS -----
 // Update brush size & opacity display
 brushSizeInput.addEventListener('input', () => {
   brushSizeValue.textContent = brushSizeInput.value;
@@ -66,17 +189,6 @@ backgroundPatternSelect.addEventListener('change', () => {
   canvasContainer.className = 'canvas-container ' + pattern;
 });
 
-// Utility: Convert hex to rgba (opacity is 0-100, so divide by 100)
-function hexToRgba(hex, opacity) {
-  hex = hex.replace('#', '');
-  if(hex.length === 3) hex = hex.split('').map(c => c+c).join('');
-  const bigint = parseInt(hex, 16);
-  const r = (bigint >> 16) & 255;
-  const g = (bigint >> 8) & 255;
-  const b = bigint & 255;
-  return `rgba(${r},${g},${b},${opacity/100})`;
-}
-
 // ----- BRUSH FUNCTIONS (20+ types) -----
 const brushFunctions = {
   round(e, x, y, size, color, opacity) {
@@ -107,7 +219,7 @@ const brushFunctions = {
   calligraphy(e, x, y, size, color, opacity) {
     ctx.strokeStyle = hexToRgba(color, opacity);
     ctx.lineWidth = size;
-    ctx.lineCap = '*****';
+    ctx.lineCap = 'butt';
     ctx.lineTo(x + size/2, y);
     ctx.stroke();
   },
@@ -232,25 +344,20 @@ const brushFunctions = {
   }
 };
 
-// ----- DRAWING HANDLERS FOR PEN, ERASER, FILL, & SHAPES -----
+// ----- DRAWING HANDLERS -----
+// General drawing (only if not using shape or fill tool)
 canvas.addEventListener('mousedown', (e) => {
+  if (currentTool === 'shape' || currentTool === 'fill') return; // skip general drawing for these tools
   const rect = canvas.getBoundingClientRect();
   lastX = e.clientX - rect.left;
   lastY = e.clientY - rect.top;
-  savedImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  
-  if (currentTool === 'fill') {
-    // Immediate fill on mousedown if using fill tool:
-    ctx.fillStyle = hexToRgba(brushColorInput.value, opacityInput.value);
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  } else {
-    isDrawing = true;
-    ctx.beginPath();
-    ctx.moveTo(lastX, lastY);
-  }
+  saveState(); // save before starting drawing
+  isDrawing = true;
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
 });
 canvas.addEventListener('mousemove', (e) => {
-  if (!isDrawing || currentTool === 'fill') return;
+  if (!isDrawing || currentTool === 'fill' || currentTool === 'shape') return;
   const rect = canvas.getBoundingClientRect();
   let currentX = e.clientX - rect.left;
   let currentY = e.clientY - rect.top;
@@ -258,14 +365,9 @@ canvas.addEventListener('mousemove', (e) => {
   const opacity = parseFloat(opacityInput.value);
   const color = brushColorInput.value;
   
-  // Choose composite mode based on tool
-  if (currentTool === 'eraser') {
-    ctx.globalCompositeOperation = 'destination-out';
-  } else {
-    ctx.globalCompositeOperation = 'source-over';
-  }
+  // Set composite mode based on tool
+  ctx.globalCompositeOperation = (currentTool === 'eraser') ? 'destination-out' : 'source-over';
   
-  // Handle symmetry mode if enabled
   if (symmetryCheckbox.checked) {
     ctx.beginPath();
     ctx.moveTo(lastX, lastY);
@@ -282,10 +384,28 @@ canvas.addEventListener('mousemove', (e) => {
   lastY = currentY;
 });
 canvas.addEventListener('mouseup', (e) => {
-  isDrawing = false;
+  if (isDrawing) {
+    isDrawing = false;
+    // Save state after drawing is complete.
+    saveState();
+  }
 });
 canvas.addEventListener('mouseout', (e) => {
-  isDrawing = false;
+  if (isDrawing) {
+    isDrawing = false;
+    saveState();
+  }
+});
+
+// ----- FILL TOOL HANDLER (FLOOD FILL) -----
+canvas.addEventListener('mousedown', (e) => {
+  if (currentTool === 'fill') {
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.floor(e.clientX - rect.left);
+    const y = Math.floor(e.clientY - rect.top);
+    saveState(); // save state before filling
+    floodFill(x, y, brushColorInput.value);
+  }
 });
 
 // ----- SHAPES TOOL HANDLERS -----
@@ -304,6 +424,7 @@ canvas.addEventListener('mousemove', (e) => {
   const rect = canvas.getBoundingClientRect();
   const currX = e.clientX - rect.left;
   const currY = e.clientY - rect.top;
+  // Restore saved state for live preview of shape.
   ctx.putImageData(savedImageData, 0, 0);
   ctx.strokeStyle = hexToRgba(brushColorInput.value, opacityInput.value);
   ctx.lineWidth = parseInt(brushSizeInput.value);
@@ -322,7 +443,7 @@ canvas.addEventListener('mousemove', (e) => {
     ctx.strokeRect(lastX, lastY, w, h);
     ctx.setLineDash([]);
   } else if (shape === 'circle') {
-    let radius = Math.sqrt(w*w + h*h);
+    let radius = Math.sqrt(w * w + h * h);
     ctx.beginPath();
     ctx.arc(lastX, lastY, radius, 0, Math.PI * 2);
     ctx.stroke();
@@ -333,21 +454,27 @@ canvas.addEventListener('mousemove', (e) => {
   }
 });
 canvas.addEventListener('mouseup', (e) => {
-  if (currentTool === 'shape') shapeActive = false;
+  if (currentTool === 'shape' && shapeActive) {
+    shapeActive = false;
+    // Save state after drawing shape.
+    saveState();
+  }
 });
 
 // ----- ACTION BUTTONS -----
-// New Canvas: clears the drawing and resets composite mode.
 newCanvasButton.addEventListener('click', () => {
   ctx.globalCompositeOperation = 'source-over';
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  undoStack = [];
 });
-// Clear Canvas: simply clear the current drawing.
 clearCanvasButton.addEventListener('click', () => {
   ctx.globalCompositeOperation = 'source-over';
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  undoStack = [];
 });
-// Download Canvas: create a PNG data URL and trigger download.
+undoCanvasButton.addEventListener('click', () => {
+  undo();
+});
 downloadCanvasButton.addEventListener('click', () => {
   let link = document.createElement('a');
   link.download = 'DrawNow_art.png';
@@ -362,7 +489,8 @@ document.addEventListener('keydown', (e) => {
   else if (key === 'e') { toolSelect.value = 'eraser'; currentTool = 'eraser'; }
   else if (key === 'f') { toolSelect.value = 'fill'; currentTool = 'fill'; }
   else if (key === 's') { toolSelect.value = 'shape'; currentTool = 'shape'; }
-  else if (key === 'y') {
-    symmetryCheckbox.checked = !symmetryCheckbox.checked;
+  else if (key === 'y') { symmetryCheckbox.checked = !symmetryCheckbox.checked; }
+  else if (key === 'z') { // Shortcut for undo/back function
+    undo();
   }
 });
