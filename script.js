@@ -3,7 +3,7 @@ const canvas = document.getElementById('drawingCanvas');
 const ctx = canvas.getContext('2d');
 let isDrawing = false;
 let lastX = 0, lastY = 0;
-let savedImageData = null;  // For shape previews
+let savedImageData = null;  // For shapes preview
 let currentTool = document.getElementById('tool').value;
 let currentBrush = document.getElementById('brushType').value;
 let undoStack = [];
@@ -24,20 +24,21 @@ const clearCanvasButton = document.getElementById('clearCanvas');
 const undoCanvasButton = document.getElementById('undoCanvas');
 const redoCanvasButton = document.getElementById('redoCanvas');
 const downloadCanvasButton = document.getElementById('downloadCanvas');
+const darkModeToggle = document.getElementById('darkModeToggle');
 const shapeOptionsDiv = document.getElementById('shapeOptions');
 const shapeTypeSelect = document.getElementById('shapeType');
 const symmetryCheckbox = document.getElementById('symmetry');
-const darkModeToggle = document.getElementById('darkModeToggle');
 const canvasContainer = document.getElementById('canvasContainer');
 
 // ----- HISTORY FUNCTIONS -----
 function saveState() {
-  undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
-  // Clear the redo stack on new action.
+  // Clear redo stack when new state is saved.
   redoStack = [];
+  undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
 }
 function undo() {
   if (undoStack.length) {
+    // Save current state to redo stack.
     redoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
     let prevState = undoStack.pop();
     ctx.putImageData(prevState, 0, 0);
@@ -45,9 +46,10 @@ function undo() {
 }
 function redo() {
   if (redoStack.length) {
+    // Save current state to undo stack.
     undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
-    let state = redoStack.pop();
-    ctx.putImageData(state, 0, 0);
+    let nextState = redoStack.pop();
+    ctx.putImageData(nextState, 0, 0);
   }
 }
 
@@ -99,11 +101,11 @@ function floodFill(startX, startY, fillColor) {
   const startPos = (startY * width + startX) * 4;
   const targetColor = data.slice(startPos, startPos + 4);
   const fillColorArr = hexToRgbaArray(fillColor, opacityInput.value);
-  
+
   if (matchColors(targetColor, fillColorArr)) return;
-  
+
   stack.push([startX, startY]);
-  
+
   while (stack.length) {
     let [x, y] = stack.pop();
     let pixelPos = (y * width + x) * 4;
@@ -117,7 +119,7 @@ function floodFill(startX, startY, fillColor) {
     let reachRight = false;
     while (y < height && matchColorsAt(pixelPos, targetColor, data)) {
       setPixelColor(pixelPos, fillColorArr, data);
-      
+
       if (x > 0) {
         if (matchColorsAt(pixelPos - 4, targetColor, data)) {
           if (!reachLeft) {
@@ -145,7 +147,7 @@ function floodFill(startX, startY, fillColor) {
   ctx.putImageData(imageData, 0, 0);
 }
 
-// ----- STAR & HEART SHAPE FUNCTIONS -----
+// ----- STAR & IMPROVED HEART SHAPE FUNCTIONS -----
 function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
   let rot = Math.PI / 2 * 3;
   let x = cx;
@@ -169,19 +171,31 @@ function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
   ctx.stroke();
 }
 
-function drawHeart(cx, cy, width, height) {
-  // A revised heart shape with smoother curves.
+function drawHeart(cx, cy, size) {
+  // Improved heart drawing using a parametric approach.
+  ctx.save();
   ctx.beginPath();
-  ctx.moveTo(cx, cy + height/4);
-  ctx.bezierCurveTo(cx - width/2, cy - height/4,
-                    cx - width, cy + height/2,
-                    cx, cy + height);
-  ctx.bezierCurveTo(cx + width, cy + height/2,
-                    cx + width/2, cy - height/4,
-                    cx, cy + height/4);
+  ctx.translate(cx, cy);
+  ctx.moveTo(0, 0);
+  ctx.bezierCurveTo(0, -size * 0.3, -size, -size * 0.3, -size, 0);
+  ctx.bezierCurveTo(-size, size * 0.5, 0, size, 0, size * 1.2);
+  ctx.bezierCurveTo(0, size, size, size * 0.5, size, 0);
+  ctx.bezierCurveTo(size, -size * 0.3, 0, -size * 0.3, 0, 0);
   ctx.closePath();
   ctx.stroke();
+  ctx.restore();
 }
+
+// ----- DARK MODE TOGGLE HANDLER -----
+darkModeToggle.addEventListener('click', () => {
+  document.body.classList.toggle('dark');
+  // Swap icon: show moon (🌙) for dark mode, sun (☀) for light mode.
+  if(document.body.classList.contains('dark')){
+    darkModeToggle.textContent = '🌙';
+  } else {
+    darkModeToggle.textContent = '☀';
+  }
+});
 
 // ----- EVENT LISTENERS & HANDLERS -----
 // Update brush size & opacity display
@@ -208,7 +222,7 @@ brushColorInput.addEventListener('change', () => {
   addRecentColor(brushColorInput.value);
 });
 
-// Show shape options only if "shape" tool is selected
+// Show shape options only if 'shape' tool is selected
 toolSelect.addEventListener('change', () => {
   currentTool = toolSelect.value;
   shapeOptionsDiv.style.display = (currentTool === 'shape') ? 'inline-block' : 'none';
@@ -339,8 +353,7 @@ const brushFunctions = {
   },
   heart(e, x, y, size, color, opacity) {
     ctx.strokeStyle = hexToRgba(color, opacity);
-    // Adjusted heart: using the new drawHeart (uses size for both width & height)
-    drawHeart(x, y, size, size);
+    drawHeart(x, y, size);
   },
   zigzag(e, x, y, size, color, opacity) {
     ctx.strokeStyle = hexToRgba(color, opacity);
@@ -366,13 +379,13 @@ const brushFunctions = {
 };
 
 // ----- DRAWING HANDLERS -----
-// General drawing for pen/eraser (skip if using shape or fill)
+// General drawing (only if not using shape or fill tool)
 canvas.addEventListener('mousedown', (e) => {
   if (currentTool === 'shape' || currentTool === 'fill') return;
   const rect = canvas.getBoundingClientRect();
   lastX = e.clientX - rect.left;
   lastY = e.clientY - rect.top;
-  saveState();
+  saveState(); // Save before drawing
   isDrawing = true;
   ctx.beginPath();
   ctx.moveTo(lastX, lastY);
@@ -416,7 +429,7 @@ canvas.addEventListener('mouseout', (e) => {
   }
 });
 
-// ----- FILL TOOL HANDLER -----
+// ----- FILL TOOL HANDLER (Flood Fill) -----
 canvas.addEventListener('mousedown', (e) => {
   if (currentTool === 'fill') {
     const rect = canvas.getBoundingClientRect();
@@ -450,25 +463,19 @@ canvas.addEventListener('mousemove', (e) => {
   let shape = shapeTypeSelect.value;
   let w = currX - lastX;
   let h = currY - lastY;
-  
   if (shape === 'line' || shape === 'dottedLine') {
     ctx.beginPath();
     ctx.moveTo(lastX, lastY);
-    if (shape === 'dottedLine') {
-      // Dynamic dash based on brush size.
-      ctx.setLineDash([parseInt(brushSizeInput.value), parseInt(brushSizeInput.value)]);
-    }
+    if (shape === 'dottedLine') ctx.setLineDash([2,6]);
     ctx.lineTo(currX, currY);
     ctx.stroke();
     ctx.setLineDash([]);
   } else if (shape === 'rectangle' || shape === 'dottedRectangle') {
-    if (shape === 'dottedRectangle') {
-      ctx.setLineDash([parseInt(brushSizeInput.value), parseInt(brushSizeInput.value)]);
-    }
+    if (shape === 'dottedRectangle') ctx.setLineDash([2,6]);
     ctx.strokeRect(lastX, lastY, w, h);
     ctx.setLineDash([]);
   } else if (shape === 'circle') {
-    let radius = Math.sqrt(w*w + h*h);
+    let radius = Math.sqrt(w * w + h * h);
     ctx.beginPath();
     ctx.arc(lastX, lastY, radius, 0, Math.PI * 2);
     ctx.stroke();
@@ -480,8 +487,8 @@ canvas.addEventListener('mousemove', (e) => {
     let r = Math.max(Math.abs(w), Math.abs(h));
     drawStar(lastX, lastY, 5, r, r/2);
   } else if (shape === 'heart') {
-    // Use revised heart shape with improved curves.
-    drawHeart(lastX, lastY, Math.abs(w), Math.abs(h));
+    // Use a single size parameter for the heart shape.
+    drawHeart(lastX, lastY, Math.max(Math.abs(w), Math.abs(h)));
   }
 });
 canvas.addEventListener('mouseup', (e) => {
@@ -525,13 +532,6 @@ document.addEventListener('keydown', (e) => {
   else if (key === 'f') { toolSelect.value = 'fill'; currentTool = 'fill'; }
   else if (key === 's') { toolSelect.value = 'shape'; currentTool = 'shape'; }
   else if (key === 'y') { symmetryCheckbox.checked = !symmetryCheckbox.checked; }
-  else if (key === 'z' && !e.shiftKey) { undo(); }
-  else if (key === 'z' && e.shiftKey) { redo(); }
-});
-
-// ----- DARK MODE TOGGLE -----
-darkModeToggle.addEventListener('click', () => {
-  document.body.classList.toggle('dark-mode');
-  // Toggle icon: show sun if dark mode is active, moon otherwise.
-  darkModeToggle.textContent = document.body.classList.contains('dark-mode') ? '☀' : '☾';
+  else if (key === 'z') { undo(); }
+  else if (e.shiftKey && key === 'z') { redo(); }
 });
