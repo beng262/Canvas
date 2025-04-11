@@ -3,7 +3,7 @@ const canvas = document.getElementById('drawingCanvas');
 const ctx = canvas.getContext('2d');
 let isDrawing = false;
 let lastX = 0, lastY = 0;
-let savedImageData = null;  // For shapes preview
+let savedImageData = null;  // For shape previews
 let currentTool = document.getElementById('tool').value;
 let currentBrush = document.getElementById('brushType').value;
 let undoStack = [];
@@ -27,13 +27,13 @@ const downloadCanvasButton = document.getElementById('downloadCanvas');
 const shapeOptionsDiv = document.getElementById('shapeOptions');
 const shapeTypeSelect = document.getElementById('shapeType');
 const symmetryCheckbox = document.getElementById('symmetry');
-const toggleDarkModeButton = document.getElementById('toggleDarkMode');
+const darkModeToggle = document.getElementById('darkModeToggle');
 const canvasContainer = document.getElementById('canvasContainer');
 
 // ----- HISTORY FUNCTIONS -----
 function saveState() {
-  // Save current state and clear the redo stack
   undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+  // Clear the redo stack on new action.
   redoStack = [];
 }
 function undo() {
@@ -46,15 +46,15 @@ function undo() {
 function redo() {
   if (redoStack.length) {
     undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
-    let nextState = redoStack.pop();
-    ctx.putImageData(nextState, 0, 0);
+    let state = redoStack.pop();
+    ctx.putImageData(state, 0, 0);
   }
 }
 
 // ----- UTILITY FUNCTIONS -----
 function hexToRgba(hex, opacity) {
   hex = hex.replace('#', '');
-  if (hex.length === 3) hex = hex.split('').map(c => c+c).join('');
+  if(hex.length === 3) hex = hex.split('').map(c => c+c).join('');
   const bigint = parseInt(hex, 16);
   const r = (bigint >> 16) & 255;
   const g = (bigint >> 8) & 255;
@@ -63,7 +63,7 @@ function hexToRgba(hex, opacity) {
 }
 function hexToRgbaArray(hex, opacity) {
   hex = hex.replace('#','');
-  if (hex.length === 3) hex = hex.split('').map(c => c+c).join('');
+  if(hex.length === 3) hex = hex.split('').map(c => c+c).join('');
   const bigint = parseInt(hex, 16);
   const r = (bigint >> 16) & 255;
   const g = (bigint >> 8) & 255;
@@ -89,7 +89,7 @@ function setPixelColor(index, color, data) {
   data[index+3] = color[3];
 }
 
-// ----- IMPROVED FLOOD FILL ALGORITHM -----
+// ----- REVISED FLOOD FILL ALGORITHM -----
 function floodFill(startX, startY, fillColor) {
   const width = canvas.width;
   const height = canvas.height;
@@ -99,11 +99,11 @@ function floodFill(startX, startY, fillColor) {
   const startPos = (startY * width + startX) * 4;
   const targetColor = data.slice(startPos, startPos + 4);
   const fillColorArr = hexToRgbaArray(fillColor, opacityInput.value);
-
-  if (matchColors(targetColor, fillColorArr)) return; 
-
+  
+  if (matchColors(targetColor, fillColorArr)) return;
+  
   stack.push([startX, startY]);
-
+  
   while (stack.length) {
     let [x, y] = stack.pop();
     let pixelPos = (y * width + x) * 4;
@@ -117,7 +117,7 @@ function floodFill(startX, startY, fillColor) {
     let reachRight = false;
     while (y < height && matchColorsAt(pixelPos, targetColor, data)) {
       setPixelColor(pixelPos, fillColorArr, data);
-
+      
       if (x > 0) {
         if (matchColorsAt(pixelPos - 4, targetColor, data)) {
           if (!reachLeft) {
@@ -145,16 +145,18 @@ function floodFill(startX, startY, fillColor) {
   ctx.putImageData(imageData, 0, 0);
 }
 
-// ----- STAR & IMPROVED HEART SHAPE FUNCTIONS -----
-// Star shape function remains similar.
+// ----- STAR & HEART SHAPE FUNCTIONS -----
 function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
   let rot = Math.PI / 2 * 3;
+  let x = cx;
+  let y = cy;
   let step = Math.PI / spikes;
+  
   ctx.beginPath();
   ctx.moveTo(cx, cy - outerRadius);
   for (let i = 0; i < spikes; i++) {
-    let x = cx + Math.cos(rot) * outerRadius;
-    let y = cy + Math.sin(rot) * outerRadius;
+    x = cx + Math.cos(rot) * outerRadius;
+    y = cy + Math.sin(rot) * outerRadius;
     ctx.lineTo(x, y);
     rot += step;
     
@@ -167,22 +169,59 @@ function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
   ctx.stroke();
 }
 
-// Improved heart shape using parametric equations
-function drawHeart(cx, cy, size) {
+function drawHeart(cx, cy, width, height) {
+  // A revised heart shape with smoother curves.
   ctx.beginPath();
-  // Use a parametric heart curve scaled by size.
-  for (let t = 0; t < Math.PI * 2; t += 0.01) {
-    // Standard parametric heart curve
-    const x = 16 * Math.pow(Math.sin(t), 3);
-    const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
-    const scaledX = cx + x * size / 25;
-    const scaledY = cy - y * size / 25;
-    if (t === 0) ctx.moveTo(scaledX, scaledY);
-    else ctx.lineTo(scaledX, scaledY);
-  }
+  ctx.moveTo(cx, cy + height/4);
+  ctx.bezierCurveTo(cx - width/2, cy - height/4,
+                    cx - width, cy + height/2,
+                    cx, cy + height);
+  ctx.bezierCurveTo(cx + width, cy + height/2,
+                    cx + width/2, cy - height/4,
+                    cx, cy + height/4);
   ctx.closePath();
   ctx.stroke();
 }
+
+// ----- EVENT LISTENERS & HANDLERS -----
+// Update brush size & opacity display
+brushSizeInput.addEventListener('input', () => {
+  brushSizeValue.textContent = brushSizeInput.value;
+});
+opacityInput.addEventListener('input', () => {
+  opacityValue.textContent = opacityInput.value;
+});
+
+// Recent Colors Palette
+let recentColors = [];
+function addRecentColor(color) {
+  if (!recentColors.includes(color)) {
+    recentColors.push(color);
+    let swatch = document.createElement('div');
+    swatch.className = 'color-swatch';
+    swatch.style.backgroundColor = color;
+    swatch.onclick = () => { brushColorInput.value = color; };
+    recentColorsDiv.appendChild(swatch);
+  }
+}
+brushColorInput.addEventListener('change', () => {
+  addRecentColor(brushColorInput.value);
+});
+
+// Show shape options only if "shape" tool is selected
+toolSelect.addEventListener('change', () => {
+  currentTool = toolSelect.value;
+  shapeOptionsDiv.style.display = (currentTool === 'shape') ? 'inline-block' : 'none';
+});
+// Update brush type
+brushTypeSelect.addEventListener('change', () => {
+  currentBrush = brushTypeSelect.value;
+});
+// Update canvas background
+backgroundPatternSelect.addEventListener('change', () => {
+  const pattern = backgroundPatternSelect.value;
+  canvasContainer.className = 'canvas-container ' + pattern;
+});
 
 // ----- BRUSH FUNCTIONS (20+ types) -----
 const brushFunctions = {
@@ -300,7 +339,8 @@ const brushFunctions = {
   },
   heart(e, x, y, size, color, opacity) {
     ctx.strokeStyle = hexToRgba(color, opacity);
-    drawHeart(x, y, size);
+    // Adjusted heart: using the new drawHeart (uses size for both width & height)
+    drawHeart(x, y, size, size);
   },
   zigzag(e, x, y, size, color, opacity) {
     ctx.strokeStyle = hexToRgba(color, opacity);
@@ -326,7 +366,7 @@ const brushFunctions = {
 };
 
 // ----- DRAWING HANDLERS -----
-// General drawing (skip if tool is shape or fill)
+// General drawing for pen/eraser (skip if using shape or fill)
 canvas.addEventListener('mousedown', (e) => {
   if (currentTool === 'shape' || currentTool === 'fill') return;
   const rect = canvas.getBoundingClientRect();
@@ -410,19 +450,25 @@ canvas.addEventListener('mousemove', (e) => {
   let shape = shapeTypeSelect.value;
   let w = currX - lastX;
   let h = currY - lastY;
+  
   if (shape === 'line' || shape === 'dottedLine') {
     ctx.beginPath();
     ctx.moveTo(lastX, lastY);
-    if (shape === 'dottedLine') ctx.setLineDash([2,2]);
+    if (shape === 'dottedLine') {
+      // Dynamic dash based on brush size.
+      ctx.setLineDash([parseInt(brushSizeInput.value), parseInt(brushSizeInput.value)]);
+    }
     ctx.lineTo(currX, currY);
     ctx.stroke();
     ctx.setLineDash([]);
   } else if (shape === 'rectangle' || shape === 'dottedRectangle') {
-    if (shape === 'dottedRectangle') ctx.setLineDash([2,2]);
+    if (shape === 'dottedRectangle') {
+      ctx.setLineDash([parseInt(brushSizeInput.value), parseInt(brushSizeInput.value)]);
+    }
     ctx.strokeRect(lastX, lastY, w, h);
     ctx.setLineDash([]);
   } else if (shape === 'circle') {
-    let radius = Math.sqrt(w * w + h * h);
+    let radius = Math.sqrt(w*w + h*h);
     ctx.beginPath();
     ctx.arc(lastX, lastY, radius, 0, Math.PI * 2);
     ctx.stroke();
@@ -434,9 +480,8 @@ canvas.addEventListener('mousemove', (e) => {
     let r = Math.max(Math.abs(w), Math.abs(h));
     drawStar(lastX, lastY, 5, r, r/2);
   } else if (shape === 'heart') {
-    // For heart, we use a single size parameter based on the maximum drag distance.
-    let size = Math.max(Math.abs(w), Math.abs(h));
-    drawHeart(lastX, lastY, size);
+    // Use revised heart shape with improved curves.
+    drawHeart(lastX, lastY, Math.abs(w), Math.abs(h));
   }
 });
 canvas.addEventListener('mouseup', (e) => {
@@ -480,17 +525,13 @@ document.addEventListener('keydown', (e) => {
   else if (key === 'f') { toolSelect.value = 'fill'; currentTool = 'fill'; }
   else if (key === 's') { toolSelect.value = 'shape'; currentTool = 'shape'; }
   else if (key === 'y') { symmetryCheckbox.checked = !symmetryCheckbox.checked; }
-  else if (key === 'z') { undo(); }
-  else if (key === 'r') { redo(); }
+  else if (key === 'z' && !e.shiftKey) { undo(); }
+  else if (key === 'z' && e.shiftKey) { redo(); }
 });
 
 // ----- DARK MODE TOGGLE -----
-toggleDarkModeButton.addEventListener('click', () => {
+darkModeToggle.addEventListener('click', () => {
   document.body.classList.toggle('dark-mode');
-  // Toggle the icon: if dark-mode, show moon (🌙), else sun (☀️)
-  if (document.body.classList.contains('dark-mode')) {
-    toggleDarkModeButton.textContent = "🌙";
-  } else {
-    toggleDarkModeButton.textContent = "☀️";
-  }
+  // Toggle icon: show sun if dark mode is active, moon otherwise.
+  darkModeToggle.textContent = document.body.classList.contains('dark-mode') ? '☀' : '☾';
 });
