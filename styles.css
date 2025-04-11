@@ -10,14 +10,14 @@ body {
 
 /* Dark Mode Styles */
 body.dark {
-  background: #222;
+  background: linear-gradient(90deg, #09012D, #402A76);
   color: #eee;
 }
 body.dark header h1 {
   color: #eee;
 }
 body.dark .toolbar {
-  background-color: #333;
+  background-color: #000;
 }
 body.dark .toolbar-item {
   color: #eee;
@@ -136,4 +136,3 @@ canvas {
   top: 0;
   z-index: 1;
 }
-
