@@ -4,7 +4,14 @@ body {
   padding: 0;
   font-family: 'Arial', sans-serif;
   background: linear-gradient(90deg, #A3D3FF, #FFB2F7, #C3B9FF);
-  color: #A3D3FF;
+  color: white;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* Dark Mode */
+body.dark-mode {
+  background: #222;
+  color: #ddd;
 }
 
 /* Header */
@@ -18,35 +25,45 @@ header h1 {
   font-size: 3em;
 }
 
-/* Toolbar */
+/* Toolbar & Menus */
 .toolbar {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  background-color: rgba(255,255,255,0.9);
+  justify-content: space-around;
+  background: linear-gradient(90deg, #A3D3FF, #FFB2F7, #C3B9FF);
   padding: 10px;
-  border-radius: 8px;
   margin: 10px auto;
   max-width: 950px;
 }
-.toolbar-item {
-  margin: 5px 10px;
-  font-weight: bold;
-  color: #A3D3FF;
+.menu-group {
+  display: flex;
+  flex-direction: column;
+  margin: 5px;
 }
-.toolbar-item label {
+.menu {
+  padding: 10px;
+}
+.menu h3 {
+  margin: 0 0 5px;
+  color: white;
+}
+.menu-item {
+  margin: 5px 0;
+}
+.menu-item label {
   margin-right: 5px;
+  color: white;
 }
 button {
-  background-color: #FFB2F7;
+  background: transparent;
   border: none;
   padding: 6px 12px;
-  border-radius: 4px;
   color: white;
   cursor: pointer;
+  transition: background 0.2s;
 }
 button:hover {
-  background-color: #e699f0;
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Recent Colors Palette */
@@ -58,7 +75,7 @@ button:hover {
   width: 20px;
   height: 20px;
   margin-right: 3px;
-  border: 1px solid #C3B9FF;
+  border: 1px solid white;
   cursor: pointer;
 }
 
@@ -67,7 +84,7 @@ button:hover {
   margin: 20px auto;
   width: 800px;
   height: 600px;
-  border: 2px dashed #ccc;
+  border: none;
   position: relative;
   background-size: cover;
   background-position: center;
@@ -81,10 +98,10 @@ button:hover {
   background: repeating-linear-gradient(0deg, #fff, #fff 23px, #d1d1d1 24px);
 }
 .canvas-container.pastel {
-  background: linear-gradient(45deg, #A3D3FF 25%, transparent 100%) -50px 0,
-              linear-gradient(-45deg, #FFB2F7 25%, transparent 100%) -50px 0,
-              linear-gradient(45deg, transparent 100%, #C3B9FF 75%),
-              linear-gradient(-45deg, transparent 100%, #C3B9FF 75%);
+  background: linear-gradient(45deg, #A3D3FF 25%, transparent 25%) -50px 0,
+              linear-gradient(-45deg, #FFB2F7 25%, transparent 25%) -50px 0,
+              linear-gradient(45deg, transparent 75%, #C3B9FF 75%),
+              linear-gradient(-45deg, transparent 75%, #C3B9FF 75%);
   background-size: 100px 100px;
 }
 .canvas-container.fabric {
