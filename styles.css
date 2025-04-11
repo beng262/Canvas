@@ -4,11 +4,11 @@ body {
   padding: 0;
   font-family: 'Arial', sans-serif;
   background: linear-gradient(90deg, #A3D3FF, #FFB2F7, #C3B9FF);
-  color: white;
+  color: #333;
   transition: background 0.3s, color 0.3s;
 }
 
-/* Dark Mode */
+/* Dark mode overrides */
 body.dark-mode {
   background: #222;
   color: #ddd;
@@ -25,45 +25,44 @@ header h1 {
   font-size: 3em;
 }
 
-/* Toolbar & Menus */
+/* Toolbar */
 .toolbar {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-around;
+  justify-content: center;
   background: linear-gradient(90deg, #A3D3FF, #FFB2F7, #C3B9FF);
   padding: 10px;
   margin: 10px auto;
   max-width: 950px;
-}
-.menu-group {
-  display: flex;
-  flex-direction: column;
-  margin: 5px;
-}
-.menu {
-  padding: 10px;
-}
-.menu h3 {
-  margin: 0 0 5px;
   color: white;
 }
-.menu-item {
-  margin: 5px 0;
+body.dark-mode .toolbar {
+  background: linear-gradient(90deg, #444, #666, #444);
 }
-.menu-item label {
+.toolbar-item {
+  margin: 5px 10px;
+  font-weight: bold;
+  color: white;
+}
+.toolbar-item label {
   margin-right: 5px;
   color: white;
 }
-button {
+select, input[type="color"], input[type="range"] {
   background: transparent;
   border: none;
-  padding: 6px 12px;
+  color: white;
+}
+button {
+  background-color: transparent;
+  border: none;
   color: white;
   cursor: pointer;
-  transition: background 0.2s;
+  padding: 6px 12px;
+  font-size: 1em;
 }
 button:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background-color: rgba(255,255,255,0.2);
 }
 
 /* Recent Colors Palette */
@@ -89,8 +88,6 @@ button:hover {
   background-size: cover;
   background-position: center;
 }
-
-/* Predefined Backgrounds */
 .canvas-container.plain {
   background-color: #fff;
 }
