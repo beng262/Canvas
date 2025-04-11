@@ -4,14 +4,29 @@ body {
   padding: 0;
   font-family: 'Arial', sans-serif;
   background: linear-gradient(90deg, #A3D3FF, #FFB2F7, #C3B9FF);
-  color: #333;
+  color: #A3D3FF;
   transition: background 0.3s, color 0.3s;
 }
 
-/* Dark mode overrides */
-body.dark-mode {
+/* Dark Mode Styles */
+body.dark {
   background: #222;
-  color: #ddd;
+  color: #eee;
+}
+body.dark header h1 {
+  color: #eee;
+}
+body.dark .toolbar {
+  background-color: #333;
+}
+body.dark .toolbar-item {
+  color: #eee;
+}
+body.dark button {
+  background-color: #555;
+}
+body.dark button:hover {
+  background-color: #777;
 }
 
 /* Header */
@@ -30,39 +45,31 @@ header h1 {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  background: linear-gradient(90deg, #A3D3FF, #FFB2F7, #C3B9FF);
+  background-color: rgba(255,255,255,0.9);
   padding: 10px;
+  border-radius: 8px;
   margin: 10px auto;
   max-width: 950px;
-  color: white;
-}
-body.dark-mode .toolbar {
-  background: linear-gradient(90deg, #444, #666, #444);
 }
 .toolbar-item {
   margin: 5px 10px;
   font-weight: bold;
-  color: white;
+  color: #A3D3FF;
 }
 .toolbar-item label {
   margin-right: 5px;
-  color: white;
-}
-select, input[type="color"], input[type="range"] {
-  background: transparent;
-  border: none;
-  color: white;
 }
 button {
-  background-color: transparent;
+  background-color: #FFB2F7;
   border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
   color: white;
   cursor: pointer;
-  padding: 6px 12px;
-  font-size: 1em;
+  transition: background 0.3s;
 }
 button:hover {
-  background-color: rgba(255,255,255,0.2);
+  background-color: #e699f0;
 }
 
 /* Recent Colors Palette */
@@ -74,7 +81,7 @@ button:hover {
   width: 20px;
   height: 20px;
   margin-right: 3px;
-  border: 1px solid white;
+  border: 1px solid #C3B9FF;
   cursor: pointer;
 }
 
@@ -83,11 +90,13 @@ button:hover {
   margin: 20px auto;
   width: 800px;
   height: 600px;
-  border: none;
+  border: 2px dashed #ccc;
   position: relative;
   background-size: cover;
   background-position: center;
 }
+
+/* Predefined Backgrounds */
 .canvas-container.plain {
   background-color: #fff;
 }
@@ -127,3 +136,4 @@ canvas {
   top: 0;
   z-index: 1;
 }
+
