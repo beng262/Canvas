@@ -23,7 +23,7 @@ header h1 {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  background-color: rgba(255,255,255,0.9);
+  background-color: linear-gradient(90deg, #A3D3FF, #FFB2F7, #C3B9FF);
   padding: 10px;
   border-radius: 8px;
   margin: 10px auto;
