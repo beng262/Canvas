@@ -5,28 +5,6 @@ body {
   font-family: 'Arial', sans-serif;
   background: linear-gradient(90deg, #A3D3FF, #FFB2F7, #C3B9FF);
   color: #A3D3FF;
-  transition: background 0.3s, color 0.3s;
-}
-
-/* Dark Mode Styles */
-body.dark {
-  background: linear-gradient(90deg, #09012D, #402A76);
-  color: #eee;
-}
-body.dark header h1 {
-  color: #eee;
-}
-body.dark .toolbar {
-  background-color: #000;
-}
-body.dark .toolbar-item {
-  color: #eee;
-}
-body.dark button {
-  background-color: #555;
-}
-body.dark button:hover {
-  background-color: #777;
 }
 
 /* Header */
@@ -66,7 +44,6 @@ button {
   border-radius: 4px;
   color: white;
   cursor: pointer;
-  transition: background 0.3s;
 }
 button:hover {
   background-color: #e699f0;
@@ -111,22 +88,22 @@ button:hover {
   background-size: 100px 100px;
 }
 .canvas-container.fabric {
-  background-image: url('https://assets.onecompiler.app/438dg3d7r/43efd2752/fabric%20copy.png');
+  background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/fabric%20copy.png');
 }
 .canvas-container.paper {
-  background-image: url('https://assets.onecompiler.app/438dg3d7r/43efd2752/10366807.jpg');
+  background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/10366807.jpg');
 }
 .canvas-container.grid {
-  background-image: url('https://assets.onecompiler.app/438dg3d7r/43efd2752/sl_072622_51930_13.jpg');
+  background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/sl_072622_51930_13.jpg');
 }
 .canvas-container.oldpaper {
-  background-image: url('https://assets.onecompiler.app/438dg3d7r/43efd2752/37416bdfbbe287d1f1cd44fa8dfd3159.jpg');
+  background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/37416bdfbbe287d1f1cd44fa8dfd3159.jpg');
 }
 .canvas-container.wood {
-  background-image: url('https://assets.onecompiler.app/438dg3d7r/43efd2752/wood.jpg');
+  background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/wood.jpg');
 }
 .canvas-container.marble {
-  background-image: url('https://assets.onecompiler.app/438dg3d7r/43efd2752/marble%20copy.png');
+  background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/marble%20copy.png');
 }
 
 /* The drawing canvas itself */
