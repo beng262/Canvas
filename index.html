@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>DrawNow!</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles/theme.css">
+  <link rel="stylesheet" href="styles/main.css">
 </head>
 <body>
   <!-- Header -->
@@ -100,10 +101,10 @@
     <div class="toolbar-item">
       <button id="newCanvas">New Canvas</button>
       <button id="clearCanvas">Clear Canvas</button>
-      <button id="undoCanvas">⟲ Undo</button>
-      <button id="redoCanvas">⟳ Redo</button>
+      <button id="undoCanvas" data-role="undo">⟲ Undo</button>
+      <button id="redoCanvas" data-role="redo">⟳ Redo</button>
       <button id="downloadCanvas">Download</button>
-      <button id="darkModeToggle">☀</button>
+      <button id="darkModeToggle" data-role="theme-toggle">☀</button>
     </div>
     <!-- Symmetry mode (toggle with shortcut Y) -->
     <div class="toolbar-item">
@@ -119,6 +120,7 @@
     <canvas id="drawingCanvas" width="800" height="600"></canvas>
   </div>
 
-  <script src="script.js"></script>
+  <script src="scripts/theme.js"></script>
+  <script src="scripts/app.js"></script>
 </body>
 </html>
