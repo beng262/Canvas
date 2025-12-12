@@ -4,6 +4,15 @@
   <meta charset="UTF-8">
   <title>DrawNow!</title>
   <link rel="stylesheet" href="styles.css">
+  <script>
+    // Apply theme immediately to prevent flash of wrong theme
+    (function() {
+      const storedTheme = localStorage.getItem('theme');
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      const theme = storedTheme || systemTheme;
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
 </head>
 <body>
   <!-- Header -->
