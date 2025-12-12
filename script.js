@@ -598,6 +598,14 @@ document.addEventListener('DOMContentLoaded', () => {
   redoCanvasButton.addEventListener('click', () => {
     redo();
   });
+  // Helper function to trigger download
+  function downloadImage(dataURL, filename) {
+    const link = document.createElement('a');
+    link.download = filename;
+    link.href = dataURL;
+    link.click();
+  }
+
   downloadCanvasButton.addEventListener('click', () => {
     // Create a temporary canvas with white background
     const tempCanvas = document.createElement('canvas');
@@ -613,18 +621,12 @@ document.addEventListener('DOMContentLoaded', () => {
     tempCtx.drawImage(canvas, 0, 0);
     
     // Download with white background
-    let link = document.createElement('a');
-    link.download = 'DrawNow_art.png';
-    link.href = tempCanvas.toDataURL('image/png');
-    link.click();
+    downloadImage(tempCanvas.toDataURL('image/png'), 'DrawNow_art.png');
   });
 
   downloadTransparentButton.addEventListener('click', () => {
     // Download with transparent background (just the drawing)
-    let link = document.createElement('a');
-    link.download = 'DrawNow_art_transparent.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+    downloadImage(canvas.toDataURL('image/png'), 'DrawNow_art_transparent.png');
   });
 
   // ----- KEYBOARD SHORTCUTS -----
