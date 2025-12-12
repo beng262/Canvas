@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.body.classList.contains('dark')) {
       darkModeToggle.textContent = '🌙';
     } else {
-      darkModeToggle.textContent = '☀';
+      darkModeToggle.textContent = '☀️';
     }
   });
 
