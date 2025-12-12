@@ -31,10 +31,61 @@ document.addEventListener('DOMContentLoaded', () => {
   const symmetryCheckbox = document.getElementById('symmetry');
   const canvasContainer = document.getElementById('canvasContainer');
 
-  // ----- INITIAL DARK MODE SETUP -----
-  // Start in dark mode by default.
-  document.body.classList.add('dark');
-  darkModeToggle.textContent = '🌙';
+  // ----- THEME MANAGEMENT -----
+  function getSystemThemePreference() {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  function getStoredTheme() {
+    return localStorage.getItem('theme');
+  }
+
+  function setStoredTheme(theme) {
+    localStorage.setItem('theme', theme);
+  }
+
+  function applyTheme(theme) {
+    const html = document.documentElement;
+    if (theme === 'dark') {
+      html.setAttribute('data-theme', 'dark');
+      darkModeToggle.textContent = '🌙';
+      darkModeToggle.setAttribute('aria-pressed', 'true');
+      darkModeToggle.setAttribute('aria-label', 'Switch to light mode');
+    } else {
+      html.setAttribute('data-theme', 'light');
+      darkModeToggle.textContent = '☀️';
+      darkModeToggle.setAttribute('aria-pressed', 'false');
+      darkModeToggle.setAttribute('aria-label', 'Switch to dark mode');
+    }
+  }
+
+  function initializeTheme() {
+    const storedTheme = getStoredTheme();
+    if (storedTheme) {
+      applyTheme(storedTheme);
+    } else {
+      // Use system preference if no stored preference
+      const systemTheme = getSystemThemePreference();
+      applyTheme(systemTheme);
+    }
+  }
+
+  function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    applyTheme(newTheme);
+    setStoredTheme(newTheme);
+  }
+
+  // Initialize theme on page load
+  initializeTheme();
+
+  // Listen for system theme changes (if user hasn't set explicit preference)
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (!getStoredTheme()) {
+      applyTheme(e.matches ? 'dark' : 'light');
+    }
+  });
 
   // ----- HISTORY FUNCTIONS -----
   function saveState() {
@@ -194,12 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ----- DARK MODE TOGGLE HANDLER -----
   darkModeToggle.addEventListener('click', () => {
-    document.body.classList.toggle('dark');
-    if (document.body.classList.contains('dark')) {
-      darkModeToggle.textContent = '🌙';
-    } else {
-      darkModeToggle.textContent = '☀️';
-    }
+    toggleTheme();
   });
 
   // ----- EVENT LISTENERS & HANDLERS -----

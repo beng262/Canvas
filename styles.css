@@ -1,10 +1,71 @@
+/* CSS Variables for Theme */
+:root {
+  /* Light theme colors */
+  --bg-gradient-start: #A3D3FF;
+  --bg-gradient-mid: #FFB2F7;
+  --bg-gradient-end: #C3B9FF;
+  --text-primary: #A3D3FF;
+  --text-secondary: #333333;
+  --text-white: #ffffff;
+  --toolbar-bg: rgba(255, 255, 255, 0.9);
+  --toolbar-text: #A3D3FF;
+  --button-bg: #FFB2F7;
+  --button-hover: #e699f0;
+  --button-text: #ffffff;
+  --canvas-border: #cccccc;
+  --canvas-bg: #ffffff;
+  --swatch-border: #C3B9FF;
+  --header-text: #ffffff;
+}
+
+/* Dark theme overrides via data attribute */
+[data-theme="dark"] {
+  --bg-gradient-start: #1a1a2e;
+  --bg-gradient-mid: #16213e;
+  --bg-gradient-end: #0f3460;
+  --text-primary: #e0e0e0;
+  --text-secondary: #b0b0b0;
+  --text-white: #ffffff;
+  --toolbar-bg: rgba(30, 30, 45, 0.95);
+  --toolbar-text: #e0e0e0;
+  --button-bg: #533483;
+  --button-hover: #6b4596;
+  --button-text: #ffffff;
+  --canvas-border: #555555;
+  --canvas-bg: #2a2a3e;
+  --swatch-border: #555555;
+  --header-text: #e0e0e0;
+}
+
+/* Dark theme via system preference (fallback) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-gradient-start: #1a1a2e;
+    --bg-gradient-mid: #16213e;
+    --bg-gradient-end: #0f3460;
+    --text-primary: #e0e0e0;
+    --text-secondary: #b0b0b0;
+    --text-white: #ffffff;
+    --toolbar-bg: rgba(30, 30, 45, 0.95);
+    --toolbar-text: #e0e0e0;
+    --button-bg: #533483;
+    --button-hover: #6b4596;
+    --button-text: #ffffff;
+    --canvas-border: #555555;
+    --canvas-bg: #2a2a3e;
+    --swatch-border: #555555;
+    --header-text: #e0e0e0;
+  }
+}
+
 /* Global & Gradient Background */
 body {
   margin: 0;
   padding: 0;
   font-family: 'Arial', sans-serif;
-  background: linear-gradient(90deg, #A3D3FF, #FFB2F7, #C3B9FF);
-  color: #A3D3FF;
+  background: linear-gradient(90deg, var(--bg-gradient-start), var(--bg-gradient-mid), var(--bg-gradient-end));
+  color: var(--text-primary);
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 /* Header */
@@ -14,8 +75,9 @@ header {
 }
 header h1 {
   margin: 0;
-  color: white;
+  color: var(--header-text);
   font-size: 3em;
+  transition: color 0.3s ease;
 }
 
 /* Toolbar */
@@ -23,30 +85,38 @@ header h1 {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  background-color: rgba(255,255,255,0.9);
+  background-color: var(--toolbar-bg);
   padding: 10px;
   border-radius: 8px;
   margin: 10px auto;
   max-width: 950px;
+  transition: background-color 0.3s ease;
 }
 .toolbar-item {
   margin: 5px 10px;
   font-weight: bold;
-  color: #A3D3FF;
+  color: var(--toolbar-text);
+  transition: color 0.3s ease;
 }
 .toolbar-item label {
   margin-right: 5px;
+  color: var(--toolbar-text);
 }
 button {
-  background-color: #FFB2F7;
+  background-color: var(--button-bg);
   border: none;
   padding: 6px 12px;
   border-radius: 4px;
-  color: white;
+  color: var(--button-text);
   cursor: pointer;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 button:hover {
-  background-color: #e699f0;
+  background-color: var(--button-hover);
+}
+button:focus {
+  outline: 2px solid var(--button-hover);
+  outline-offset: 2px;
 }
 
 /* Recent Colors Palette */
@@ -58,8 +128,9 @@ button:hover {
   width: 20px;
   height: 20px;
   margin-right: 3px;
-  border: 1px solid #C3B9FF;
+  border: 1px solid var(--swatch-border);
   cursor: pointer;
+  transition: border-color 0.3s ease;
 }
 
 /* Canvas Container */
@@ -67,15 +138,16 @@ button:hover {
   margin: 20px auto;
   width: 800px;
   height: 600px;
-  border: 2px dashed #ccc;
+  border: 2px dashed var(--canvas-border);
   position: relative;
   background-size: cover;
   background-position: center;
+  transition: border-color 0.3s ease, background-color 0.3s ease;
 }
 
 /* Predefined Backgrounds */
 .canvas-container.plain {
-  background-color: #fff;
+  background-color: var(--canvas-bg);
 }
 .canvas-container.notebook {
   background: repeating-linear-gradient(0deg, #fff, #fff 23px, #d1d1d1 24px);
