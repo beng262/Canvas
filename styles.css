@@ -37,7 +37,9 @@
   --header-text: #e0e0e0;
 }
 
-/* Dark theme via system preference (fallback) */
+/* Dark theme via system preference (fallback)
+   Note: Colors are intentionally duplicated from [data-theme="dark"] to ensure
+   system preference works when user hasn't set an explicit theme preference */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg-gradient-start: #1a1a2e;
