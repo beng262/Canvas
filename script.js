@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const undoCanvasButton = document.getElementById('undoCanvas');
   const redoCanvasButton = document.getElementById('redoCanvas');
   const downloadCanvasButton = document.getElementById('downloadCanvas');
+  const downloadTransparentButton = document.getElementById('downloadTransparent');
   const darkModeToggle = document.getElementById('darkModeToggle');
   const shapeOptionsDiv = document.getElementById('shapeOptions');
   const shapeTypeSelect = document.getElementById('shapeType');
@@ -598,8 +599,30 @@ document.addEventListener('DOMContentLoaded', () => {
     redo();
   });
   downloadCanvasButton.addEventListener('click', () => {
+    // Create a temporary canvas with white background
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    // Fill with white background
+    tempCtx.fillStyle = '#ffffff';
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+    
+    // Draw the original canvas on top
+    tempCtx.drawImage(canvas, 0, 0);
+    
+    // Download with white background
     let link = document.createElement('a');
     link.download = 'DrawNow_art.png';
+    link.href = tempCanvas.toDataURL('image/png');
+    link.click();
+  });
+
+  downloadTransparentButton.addEventListener('click', () => {
+    // Download with transparent background (just the drawing)
+    let link = document.createElement('a');
+    link.download = 'DrawNow_art_transparent.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
   });
