@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
   const canvas = document.getElementById('drawingCanvas');
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
   let isDrawing = false;
   let lastX = 0, lastY = 0;
   let savedImageData = null;
