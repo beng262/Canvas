@@ -508,19 +508,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  newCanvasButton.addEventListener('click', () => {
+  function resetCanvas() {
     ctx.globalCompositeOperation = 'source-over';
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     undoStack = [];
     redoStack = [];
-  });
+  }
 
-  clearCanvasButton.addEventListener('click', () => {
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    undoStack = [];
-    redoStack = [];
-  });
+  newCanvasButton.addEventListener('click', resetCanvas);
+  clearCanvasButton.addEventListener('click', resetCanvas);
 
   undoCanvasButton.addEventListener('click', () => {
     undo();
@@ -573,4 +569,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   });
+
+  saveState();
 });
