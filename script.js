@@ -36,20 +36,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const addImageButton = document.getElementById('addImageButton');
   const addImageInput = document.getElementById('addImageInput');
   const cropOverlay = document.getElementById('cropOverlay');
-  let imageObj = null; // { img: HTMLImageElement, x, y, w, h }
-  let isMovingImage = false;
-  let moveOffsetX = 0, moveOffsetY = 0;
-  let isCropping = false;
-  let cropStartX = 0, cropStartY = 0;
-  let cropRect = null; // { x, y, w, h }
 
-  // THEME (body.dark + localStorage)
+  // Transform overlay
+  const transformBox = document.getElementById('transformBox');
+
+  // The "overlay image" (not baked into base until you switch away from transform)
+  let imageObj = null; // { img, x, y, w, h, angle }
+  let baseImageData = null; // snapshot of canvas UNDER the overlay image
+  let transformMode = null; // 'move' | 'resize' | 'rotate'
+  let activeHandle = null; // 'nw','n','ne','e','se','s','sw','w'
+  let startMouse = { x: 0, y: 0 };
+  let startState = null; // { x, y, w, h, angle }
+
+  // THEME (body.dark + localStorage + emoji ☀️ / 🌙)
   const THEME_KEY = 'drawnow-theme';
   function applyTheme(mode) {
     const isDark = mode === 'dark';
     document.body.classList.toggle('dark', isDark);
     if (darkModeToggle) {
-      darkModeToggle.textContent = isDark ? '🌙' : '☀';
+      darkModeToggle.textContent = isDark ? '🌙' : '☀️';
       darkModeToggle.setAttribute('aria-pressed', String(isDark));
       darkModeToggle.title = isDark ? 'Switch to light mode' : 'Switch to dark mode';
     }
@@ -82,7 +87,9 @@ document.addEventListener('DOMContentLoaded', () => {
       redoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
       const prev = undoStack.pop();
       ctx.putImageData(prev, 0, 0);
-      redrawImageLayer();
+      // keep baseImageData in sync if overlay exists
+      if (imageObj) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      renderOverlay();
     } catch (e) {}
   }
   function redo() {
@@ -91,7 +98,8 @@ document.addEventListener('DOMContentLoaded', () => {
       undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
       const next = redoStack.pop();
       ctx.putImageData(next, 0, 0);
-      redrawImageLayer();
+      if (imageObj) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      renderOverlay();
     } catch (e) {}
   }
 
@@ -387,9 +395,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // DRAWING (save once before change)
+  // DRAWING (disabled when transform/crop tools are active)
   canvas.addEventListener('mousedown', (e) => {
-    if (currentTool === 'shape' || currentTool === 'fill' || currentTool === 'moveImage' || currentTool === 'cropImage') return;
+    if (currentTool === 'shape' || currentTool === 'fill' || currentTool === 'transform' || currentTool === 'cropImage') return;
     const rect = canvas.getBoundingClientRect();
     lastX = e.clientX - rect.left;
     lastY = e.clientY - rect.top;
@@ -400,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   canvas.addEventListener('mousemove', (e) => {
-    if (!isDrawing || currentTool === 'fill' || currentTool === 'shape' || currentTool === 'moveImage' || currentTool === 'cropImage') return;
+    if (!isDrawing || currentTool === 'fill' || currentTool === 'shape' || currentTool === 'transform' || currentTool === 'cropImage') return;
     const rect = canvas.getBoundingClientRect();
     const currentX = e.clientX - rect.left;
     const currentY = e.clientY - rect.top;
@@ -437,6 +445,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const y = Math.floor(e.clientY - rect.top);
     saveState();
     floodFill(x, y, brushColorInput.value);
+    // keep base snapshot in sync if overlay exists
+    if (imageObj) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    renderOverlay();
   });
 
   // SHAPE TOOL (save before preview)
@@ -496,13 +507,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // BACKGROUND SELECTOR (includes "dark")
+  // BACKGROUND SELECTOR
   backgroundPatternSelect.addEventListener('change', () => {
     const pattern = backgroundPatternSelect.value;
     canvasContainer.className = 'canvas-container ' + pattern;
   });
 
-  // IMAGE INSERTION
+  // IMAGE INSERTION (auto-switch to Transform)
   addImageButton.addEventListener('click', () => {
     addImageInput.click();
   });
@@ -514,16 +525,22 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
+        // Snapshot base (without the overlay image)
+        baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        // Fit image within canvas
         const scale = Math.min(canvas.width / img.width, canvas.height / img.height, 1);
         const w = Math.floor(img.width * scale);
         const h = Math.floor(img.height * scale);
         const x = Math.floor((canvas.width - w) / 2);
         const y = Math.floor((canvas.height - h) / 2);
 
-        imageObj = { img, x, y, w, h };
-        ctx.drawImage(img, x, y, w, h);
-        toolSelect.value = 'moveImage';
-        currentTool = 'moveImage';
+        imageObj = { img, x, y, w, h, angle: 0 };
+        // Show transform tool
+        toolSelect.value = 'transform';
+        currentTool = 'transform';
+        updateTransformBox();
+        renderOverlay();
       };
       img.src = reader.result;
     };
@@ -531,51 +548,153 @@ document.addEventListener('DOMContentLoaded', () => {
     addImageInput.value = '';
   });
 
-  function redrawImageLayer() {
-    if (!imageObj) return;
-    ctx.drawImage(imageObj.img, imageObj.x, imageObj.y, imageObj.w, imageObj.h);
+  // Overlay rendering: base + transformed image
+  function renderOverlay() {
+    if (!imageObj || !baseImageData) return;
+    ctx.putImageData(baseImageData, 0, 0);
+    ctx.save();
+    ctx.translate(imageObj.x, imageObj.y);
+    ctx.rotate(imageObj.angle || 0);
+    ctx.drawImage(imageObj.img, 0, 0, imageObj.w, imageObj.h);
+    ctx.restore();
   }
 
-  // MOVE IMAGE TOOL
-  canvas.addEventListener('mousedown', (e) => {
-    if (currentTool !== 'moveImage' || !imageObj) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    if (x >= imageObj.x && x <= imageObj.x + imageObj.w && y >= imageObj.y && y <= imageObj.y + imageObj.h) {
-      isMovingImage = true;
-      moveOffsetX = x - imageObj.x;
-      moveOffsetY = y - imageObj.y;
-      saveState();
+  // Transform box sync
+  function updateTransformBox() {
+    if (!imageObj) {
+      transformBox.style.display = 'none';
+      return;
     }
-  });
-  canvas.addEventListener('mousemove', (e) => {
-    if (!isMovingImage || currentTool !== 'moveImage' || !imageObj) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    imageObj.x = x - moveOffsetX;
-    imageObj.y = y - moveOffsetY;
-    ctx.putImageData(undoStack[undoStack.length - 1], 0, 0);
-    redrawImageLayer();
-  });
-  canvas.addEventListener('mouseup', () => {
-    if (isMovingImage) {
-      isMovingImage = false;
-    }
-  });
-  canvas.addEventListener('mouseout', () => {
-    if (isMovingImage) {
-      isMovingImage = false;
-    }
+    transformBox.style.display = 'block';
+    transformBox.style.width = imageObj.w + 'px';
+    transformBox.style.height = imageObj.h + 'px';
+    transformBox.style.transform = `translate(${imageObj.x}px, ${imageObj.y}px) rotate(${imageObj.angle || 0}rad)`;
+  }
+
+  // Hit helpers
+  function canvasPoint(evt) {
+    const r = canvas.getBoundingClientRect();
+    return { x: evt.clientX - r.left, y: evt.clientY - r.top };
+  }
+
+  // Transform interactions
+  transformBox.addEventListener('mousedown', (e) => {
+    if (!imageObj || currentTool !== 'transform') return;
+
+    // Ensure base snapshot exists
+    if (!baseImageData) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    const t = e.target;
+    const isRotate = t.dataset.rotate === 'true';
+    const handle = t.dataset.handle || null;
+
+    transformMode = isRotate ? 'rotate' : (handle ? 'resize' : 'move');
+    activeHandle = handle;
+
+    const p = canvasPoint(e);
+    startMouse = p;
+    startState = { x: imageObj.x, y: imageObj.y, w: imageObj.w, h: imageObj.h, angle: imageObj.angle || 0 };
+
+    e.preventDefault();
   });
 
-  // TOOL CHANGES (including crop overlay)
+  window.addEventListener('mousemove', (e) => {
+    if (!imageObj || currentTool !== 'transform' || !transformMode) return;
+    const p = canvasPoint(e);
+    const dx = p.x - startMouse.x;
+    const dy = p.y - startMouse.y;
+
+    if (transformMode === 'move') {
+      imageObj.x = startState.x + dx;
+      imageObj.y = startState.y + dy;
+    } else if (transformMode === 'resize') {
+      // Resize in unrotated space (approx) for simplicity
+      let x = startState.x, y = startState.y, w = startState.w, h = startState.h;
+
+      const aspect = w / h;
+      const keepAspect = e.shiftKey;
+
+      const applyResize = (left, top, right, bottom) => {
+        if (left)  { x = startState.x + dx; w = startState.w - dx; }
+        if (right) { w = startState.w + dx; }
+        if (top)   { y = startState.y + dy; h = startState.h - dy; }
+        if (bottom){ h = startState.h + dy; }
+
+        // Minimum size
+        w = Math.max(5, w);
+        h = Math.max(5, h);
+
+        // Keep aspect if requested
+        if (keepAspect) {
+          const newAspect = w / h;
+          if (newAspect > aspect) h = w / aspect;
+          else w = h * aspect;
+        }
+
+        // Prevent flip: adjust x/y if size changed from the side
+        if (left)  x = startState.x + (startState.w - w);
+        if (top)   y = startState.y + (startState.h - h);
+      };
+
+      const map = {
+        'nw': [true, true, false, false],
+        'n':  [false, true, false, false],
+        'ne': [false, true, true, false],
+        'e':  [false, false, true, false],
+        'se': [false, false, true, true],
+        's':  [false, false, false, true],
+        'sw': [true, false, false, true],
+        'w':  [true, false, false, false]
+      };
+      const sides = map[activeHandle] || [false, false, false, false];
+      applyResize(...sides);
+
+      imageObj.x = x; imageObj.y = y; imageObj.w = w; imageObj.h = h;
+    } else if (transformMode === 'rotate') {
+      // Rotate around center
+      const cx = startState.x + startState.w / 2;
+      const cy = startState.y + startState.h / 2;
+      const angle0 = Math.atan2(startMouse.y - cy, startMouse.x - cx);
+      const angle1 = Math.atan2(p.y - cy, p.x - cx);
+      imageObj.angle = startState.angle + (angle1 - angle0);
+    }
+
+    updateTransformBox();
+    renderOverlay();
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (!transformMode) return;
+    transformMode = null;
+    activeHandle = null;
+    // No immediate saveState here; we save when committing (tool change)
+  });
+
+  // TOOL CHANGES: show/hide overlays and commit transforms
   toolSelect.addEventListener('change', () => {
     currentTool = toolSelect.value;
     shapeOptionsDiv.style.display = (currentTool === 'shape') ? 'inline-block' : 'none';
+
+    if (currentTool !== 'transform') {
+      // Commit overlay image to base if present (flatten)
+      if (imageObj && baseImageData) {
+        saveState();
+        // Draw final composited result to canvas
+        renderOverlay();
+        // Update base snapshot and clear overlay state
+        baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        imageObj = null;
+        updateTransformBox();
+      }
+    } else {
+      // Entering transform: ensure we have a base snapshot
+      if (!baseImageData) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      updateTransformBox();
+      renderOverlay();
+    }
+
+    // Crop overlay visibility
     cropOverlay.style.display = currentTool === 'cropImage' ? 'block' : 'none';
-    if (currentTool !== 'moveImage') isMovingImage = false;
     if (currentTool !== 'cropImage') {
       isCropping = false;
       cropRect = null;
@@ -583,9 +702,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // CROP IMAGE TOOL
+  // CROP IMAGE (works when imageObj exists and angle ~ 0)
+  let isCropping = false;
+  let cropStartX = 0, cropStartY = 0;
+  let cropRect = null;
+
   canvas.addEventListener('mousedown', (e) => {
-    if (currentTool !== 'cropImage' || !imageObj) return;
+    if (currentTool !== 'cropImage') return;
+    if (!imageObj) {
+      // Nothing to crop
+      return;
+    }
+    if (Math.abs(imageObj.angle || 0) > 0.0001) {
+      alert('Crop supports only non-rotated images. Please set rotation to 0 first.');
+      return;
+    }
     const rect = canvas.getBoundingClientRect();
     cropStartX = e.clientX - rect.left;
     cropStartY = e.clientY - rect.top;
@@ -613,23 +744,21 @@ document.addEventListener('DOMContentLoaded', () => {
   canvas.addEventListener('mouseup', () => {
     if (!isCropping || currentTool !== 'cropImage' || !imageObj || !cropRect) return;
     isCropping = false;
+    cropOverlay.style.display = 'none';
 
+    // Intersection with image bounds (no rotation)
     const ix1 = Math.max(cropRect.x, imageObj.x);
     const iy1 = Math.max(cropRect.y, imageObj.y);
     const ix2 = Math.min(cropRect.x + cropRect.w, imageObj.x + imageObj.w);
     const iy2 = Math.min(cropRect.y + cropRect.h, imageObj.y + imageObj.h);
     const iw = Math.max(0, ix2 - ix1);
     const ih = Math.max(0, iy2 - iy1);
-
-    cropOverlay.style.display = 'none';
-
     if (iw <= 0 || ih <= 0) return;
 
+    // Crop underlying image source
     const off = document.createElement('canvas');
-    off.width = iw;
-    off.height = ih;
+    off.width = iw; off.height = ih;
     const offCtx = off.getContext('2d');
-
     const sx = ix1 - imageObj.x;
     const sy = iy1 - imageObj.y;
 
@@ -637,15 +766,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const croppedImg = new Image();
     croppedImg.onload = () => {
-      saveState();
       imageObj.img = croppedImg;
       imageObj.x = ix1;
       imageObj.y = iy1;
       imageObj.w = iw;
       imageObj.h = ih;
 
-      ctx.putImageData(undoStack[undoStack.length - 1], 0, 0);
-      redrawImageLayer();
+      updateTransformBox();
+      renderOverlay();
     };
     croppedImg.src = off.toDataURL('image/png');
   });
@@ -657,6 +785,8 @@ document.addEventListener('DOMContentLoaded', () => {
     undoStack = [];
     redoStack = [];
     imageObj = null;
+    baseImageData = null;
+    updateTransformBox();
   });
   clearCanvasButton.addEventListener('click', () => {
     ctx.globalCompositeOperation = 'source-over';
@@ -664,10 +794,16 @@ document.addEventListener('DOMContentLoaded', () => {
     undoStack = [];
     redoStack = [];
     imageObj = null;
+    baseImageData = null;
+    updateTransformBox();
   });
   undoCanvasButton.addEventListener('click', undo);
   redoCanvasButton.addEventListener('click', redo);
   downloadCanvasButton.addEventListener('click', () => {
+    // If overlay exists but not committed, flatten before download
+    if (imageObj && baseImageData) {
+      renderOverlay();
+    }
     const link = document.createElement('a');
     link.download = 'DrawNow_art.png';
     link.href = canvas.toDataURL('image/png');
