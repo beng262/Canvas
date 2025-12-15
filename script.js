@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let redoStack = [];
   const MAX_HISTORY = 50;
 
-  // UI elements
+  // UI
   const brushSizeInput = document.getElementById('brushSize');
   const brushSizeValue = document.getElementById('brushSizeValue');
   const opacityInput = document.getElementById('opacity');
@@ -32,23 +32,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const symmetryCheckbox = document.getElementById('symmetry');
   const canvasContainer = document.getElementById('canvasContainer');
 
-  // Image insertion & transform state
-  const addImageButton = document.getElementById('addImageButton');
-  const addImageInput = document.getElementById('addImageInput');
+  // Overlays
   const cropOverlay = document.getElementById('cropOverlay');
-
-  // Transform overlay
+  const selectOverlay = document.getElementById('selectOverlay');
   const transformBox = document.getElementById('transformBox');
 
-  // The "overlay image" (not baked into base until you switch away from transform)
-  let imageObj = null; // { img, x, y, w, h, angle }
-  let baseImageData = null; // snapshot of canvas UNDER the overlay image
-  let transformMode = null; // 'move' | 'resize' | 'rotate'
-  let activeHandle = null; // 'nw','n','ne','e','se','s','sw','w'
+  // Overlay image state (used by Add Image and Selection)
+  let imageObj = null;       // { img, x, y, w, h, angle }
+  let baseImageData = null;  // ImageData under overlay image
+  let transformMode = null;  // 'move' | 'resize' | 'rotate'
+  let activeHandle = null;
   let startMouse = { x: 0, y: 0 };
-  let startState = null; // { x, y, w, h, angle }
+  let startState = null;     // { x, y, w, h, angle }
 
-  // THEME (body.dark + localStorage + emoji ☀️ / 🌙)
+  // Selection state
+  let isSelecting = false;
+  let selectStartX = 0, selectStartY = 0;
+  let selectRect = null;     // { x, y, w, h }
+
+  // THEME
   const THEME_KEY = 'drawnow-theme';
   function applyTheme(mode) {
     const isDark = mode === 'dark';
@@ -60,20 +62,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   function initTheme() {
-    const stored = localStorage.getItem(THEME_KEY);
-    applyTheme(stored === 'dark' ? 'dark' : 'light');
+    let stored = localStorage.getItem(THEME_KEY);
+    if (stored !== 'dark' && stored !== 'light') stored = 'light';
+    applyTheme(stored);
   }
-  if (darkModeToggle) {
-    darkModeToggle.addEventListener('click', () => {
-      const isDark = document.body.classList.contains('dark');
-      const next = isDark ? 'light' : 'dark';
-      localStorage.setItem(THEME_KEY, next);
-      applyTheme(next);
-    });
-  }
+  darkModeToggle.addEventListener('click', () => {
+    const isDark = document.body.classList.contains('dark');
+    const next = isDark ? 'light' : 'dark';
+    localStorage.setItem(THEME_KEY, next);
+    applyTheme(next);
+  });
   initTheme();
 
-  // HISTORY (save once before change)
+  // HISTORY
   function saveState() {
     redoStack = [];
     try {
@@ -87,7 +88,6 @@ document.addEventListener('DOMContentLoaded', () => {
       redoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
       const prev = undoStack.pop();
       ctx.putImageData(prev, 0, 0);
-      // keep baseImageData in sync if overlay exists
       if (imageObj) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       renderOverlay();
     } catch (e) {}
@@ -123,75 +123,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const a = (opacity / 100) * 255;
     return [r, g, b, a];
   }
-  function matchColors(a, b) {
-    return a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3];
-  }
-  function matchColorsAt(index, targetColor, data) {
-    return (
-      data[index] === targetColor[0] &&
-      data[index + 1] === targetColor[1] &&
-      data[index + 2] === targetColor[2] &&
-      data[index + 3] === targetColor[3]
-    );
-  }
-  function setPixelColor(index, color, data) {
-    data[index] = color[0];
-    data[index + 1] = color[1];
-    data[index + 2] = color[2];
-    data[index + 3] = color[3];
-  }
+  function matchColors(a, b) { return a[0]===b[0] && a[1]===b[1] && a[2]===b[2] && a[3]===b[3]; }
+  function matchColorsAt(i, t, d) { return d[i]===t[0] && d[i+1]===t[1] && d[i+2]===t[2] && d[i+3]===t[3]; }
+  function setPixelColor(i, c, d) { d[i]=c[0]; d[i+1]=c[1]; d[i+2]=c[2]; d[i+3]=c[3]; }
 
   // FLOOD FILL
   function floodFill(startX, startY, fillColor) {
-    const width = canvas.width;
-    const height = canvas.height;
+    const width = canvas.width, height = canvas.height;
     const imageData = ctx.getImageData(0, 0, width, height);
     const data = imageData.data;
     const stack = [];
     const startPos = (startY * width + startX) * 4;
     const targetColor = data.slice(startPos, startPos + 4);
     const fillColorArr = hexToRgbaArray(fillColor, opacityInput.value);
-
     if (matchColors(targetColor, fillColorArr)) return;
 
     stack.push([startX, startY]);
-
     while (stack.length) {
       let [x, y] = stack.pop();
       let pixelPos = (y * width + x) * 4;
-      while (y >= 0 && matchColorsAt(pixelPos, targetColor, data)) {
-        y--;
-        pixelPos -= width * 4;
-      }
-      y++;
-      pixelPos += width * 4;
-      let reachLeft = false;
-      let reachRight = false;
+      while (y >= 0 && matchColorsAt(pixelPos, targetColor, data)) { y--; pixelPos -= width * 4; }
+      y++; pixelPos += width * 4;
+      let reachLeft = false, reachRight = false;
       while (y < height && matchColorsAt(pixelPos, targetColor, data)) {
         setPixelColor(pixelPos, fillColorArr, data);
-
         if (x > 0) {
-          if (matchColorsAt(pixelPos - 4, targetColor, data)) {
-            if (!reachLeft) {
-              stack.push([x - 1, y]);
-              reachLeft = true;
-            }
-          } else {
-            reachLeft = false;
-          }
+          if (matchColorsAt(pixelPos - 4, targetColor, data)) { if (!reachLeft) { stack.push([x - 1, y]); reachLeft = true; } }
+          else reachLeft = false;
         }
         if (x < width - 1) {
-          if (matchColorsAt(pixelPos + 4, targetColor, data)) {
-            if (!reachRight) {
-              stack.push([x + 1, y]);
-              reachRight = true;
-            }
-          } else {
-            reachRight = false;
-          }
+          if (matchColorsAt(pixelPos + 4, targetColor, data)) { if (!reachRight) { stack.push([x + 1, y]); reachRight = true; } }
+          else reachRight = false;
         }
-        y++;
-        pixelPos += width * 4;
+        y++; pixelPos += width * 4;
       }
     }
     ctx.putImageData(imageData, 0, 0);
@@ -199,205 +163,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // SHAPES
   function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
-    let rot = (Math.PI / 2) * 3;
-    let x = cx, y = cy;
-    const step = Math.PI / spikes;
-
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - outerRadius);
+    let rot = (Math.PI / 2) * 3, x = cx, y = cy, step = Math.PI / spikes;
+    ctx.beginPath(); ctx.moveTo(cx, cy - outerRadius);
     for (let i = 0; i < spikes; i++) {
-      x = cx + Math.cos(rot) * outerRadius;
-      y = cy + Math.sin(rot) * outerRadius;
-      ctx.lineTo(x, y);
-      rot += step;
-
-      x = cx + Math.cos(rot) * innerRadius;
-      y = cy + Math.sin(rot) * innerRadius;
-      ctx.lineTo(x, y);
-      rot += step;
+      x = cx + Math.cos(rot) * outerRadius; y = cy + Math.sin(rot) * outerRadius; ctx.lineTo(x, y); rot += step;
+      x = cx + Math.cos(rot) * innerRadius; y = cy + Math.sin(rot) * innerRadius; ctx.lineTo(x, y); rot += step;
     }
-    ctx.closePath();
-    ctx.stroke();
+    ctx.closePath(); ctx.stroke();
   }
-
   function drawHeart(cx, cy, size) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.translate(cx, cy);
-    ctx.moveTo(0, 0);
+    ctx.save(); ctx.beginPath(); ctx.translate(cx, cy); ctx.moveTo(0, 0);
     ctx.bezierCurveTo(0, -size * 0.3, -size, -size * 0.3, -size, 0);
     ctx.bezierCurveTo(-size, size * 0.5, 0, size, 0, size * 1.2);
     ctx.bezierCurveTo(0, size, size, size * 0.5, size, 0);
     ctx.bezierCurveTo(size, -size * 0.3, 0, -size * 0.3, 0, 0);
-    ctx.closePath();
-    ctx.stroke();
-    ctx.restore();
+    ctx.closePath(); ctx.stroke(); ctx.restore();
   }
 
   // BRUSHES
   const brushFunctions = {
-    round(e, x, y, size, color, opacity) {
-      ctx.strokeStyle = hexToRgba(color, opacity);
-      ctx.lineWidth = size;
-      ctx.lineCap = 'round';
-      ctx.lineTo(x, y);
-      ctx.stroke();
-    },
-    square(e, x, y, size, color, opacity) {
-      ctx.fillStyle = hexToRgba(color, opacity);
-      ctx.fillRect(x - size / 2, y - size / 2, size, size);
-    },
-    dotted(e, x, y, size, color, opacity) {
-      ctx.fillStyle = hexToRgba(color, opacity);
-      ctx.beginPath();
-      ctx.arc(x, y, size / 2, 0, Math.PI * 2);
-      ctx.fill();
-    },
-    spray(e, x, y, size, color, opacity) {
-      ctx.fillStyle = hexToRgba(color, opacity);
-      for (let i = 0; i < 30; i++) {
-        const offsetX = (Math.random() - 0.5) * size * 2;
-        const offsetY = (Math.random() - 0.5) * size * 2;
-        ctx.fillRect(x + offsetX, y + offsetY, 1, 1);
-      }
-    },
-    calligraphy(e, x, y, size, color, opacity) {
-      ctx.strokeStyle = hexToRgba(color, opacity);
-      ctx.lineWidth = size;
-      ctx.lineCap = 'butt';
-      ctx.lineTo(x + size / 2, y);
-      ctx.stroke();
-    },
-    splatter(e, x, y, size, color, opacity) {
-      ctx.fillStyle = hexToRgba(color, opacity);
-      for (let i = 0; i < 20; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const radius = Math.random() * size;
-        ctx.beginPath();
-        ctx.arc(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius, size / 10, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    },
-    watercolor(e, x, y, size, color, opacity) {
-      ctx.strokeStyle = hexToRgba(color, opacity * 0.7);
-      ctx.lineWidth = size;
-      ctx.lineCap = 'round';
-      ctx.lineTo(x, y);
-      ctx.stroke();
-    },
-    chalk(e, x, y, size, color, opacity) {
-      ctx.fillStyle = hexToRgba(color, opacity * 0.5);
-      for (let i = 0; i < 5; i++) {
-        ctx.beginPath();
-        ctx.arc(
-          x + Math.random() * size - size / 2,
-          y + Math.random() * size - size / 2,
-          size / 4,
-          0,
-          Math.PI * 2
-        );
-        ctx.fill();
-      }
-    },
-    oil(e, x, y, size, color, opacity) {
-      ctx.fillStyle = hexToRgba(color, opacity);
-      ctx.beginPath();
-      ctx.arc(x, y, size, 0, Math.PI * 2);
-      ctx.fill();
-    },
-    pencil(e, x, y, size, color, opacity) {
-      ctx.strokeStyle = hexToRgba(color, opacity * 0.8);
-      ctx.lineWidth = size / 2;
-      ctx.lineCap = 'round';
-      ctx.lineTo(x, y);
-      ctx.stroke();
-    },
-    neon(e, x, y, size, color, opacity) {
-      ctx.strokeStyle = hexToRgba(color, opacity);
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 10;
-      ctx.lineWidth = size;
-      ctx.lineTo(x, y);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    },
-    glitter(e, x, y, size, color, opacity) {
-      ctx.fillStyle = hexToRgba(color, opacity);
-      for (let i = 0; i < 10; i++) {
-        ctx.fillRect(
-          x + Math.random() * size - size / 2,
-          y + Math.random() * size - size / 2,
-          2,
-          2
-        );
-      }
-    },
-    textured(e, x, y, size, color, opacity) {
-      ctx.strokeStyle = hexToRgba(color, opacity);
-      ctx.lineWidth = size;
-      ctx.lineTo(x, y);
-      ctx.stroke();
-    },
-    pattern(e, x, y, size, color, opacity) {
-      ctx.fillStyle = hexToRgba(color, opacity);
-      ctx.beginPath();
-      ctx.arc(x, y, size / 3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(x + size / 2, y, size / 6, 0, Math.PI * 2);
-      ctx.fill();
-    },
-    airbrush(e, x, y, size, color, opacity) {
-      for (let i = 0; i < 20; i++) {
-        const offsetX = (Math.random() - 0.5) * size;
-        const offsetY = (Math.random() - 0.5) * size;
-        ctx.fillStyle = hexToRgba(color, opacity * Math.random());
-        ctx.fillRect(x + offsetX, y + offsetY, 1, 1);
-      }
-    },
-    star(e, x, y, size, color, opacity) {
-      ctx.strokeStyle = hexToRgba(color, opacity);
-      drawStar(x, y, 5, size, size / 2);
-    },
-    heart(e, x, y, size, color, opacity) {
-      ctx.strokeStyle = hexToRgba(color, opacity);
-      drawHeart(x, y, size);
-    },
-    zigzag(e, x, y, size, color, opacity) {
-      ctx.strokeStyle = hexToRgba(color, opacity);
-      ctx.lineWidth = size;
-      ctx.lineTo(
-        x + (Math.random() - 0.5) * size,
-        y + (Math.random() - 0.5) * size
-      );
-      ctx.stroke();
-    },
-    scatter(e, x, y, size, color, opacity) {
-      ctx.fillStyle = hexToRgba(color, opacity);
-      for (let i = 0; i < 5; i++) {
-        ctx.beginPath();
-        ctx.arc(
-          x + Math.random() * size - size / 2,
-          y + Math.random() * size - size / 2,
-          size / 6,
-          0,
-          Math.PI * 2
-        );
-        ctx.fill();
-      }
-    },
-    crayon(e, x, y, size, color, opacity) {
-      ctx.strokeStyle = hexToRgba(color, opacity * 0.9);
-      ctx.lineWidth = size;
-      ctx.lineCap = 'round';
-      ctx.lineTo(x, y);
-      ctx.stroke();
-    }
+    round(e, x, y, size, color, opacity) { ctx.strokeStyle = hexToRgba(color, opacity); ctx.lineWidth = size; ctx.lineCap = 'round'; ctx.lineTo(x, y); ctx.stroke(); },
+    square(e, x, y, size, color, opacity) { ctx.fillStyle = hexToRgba(color, opacity); ctx.fillRect(x - size / 2, y - size / 2, size, size); },
+    dotted(e, x, y, size, color, opacity) { ctx.fillStyle = hexToRgba(color, opacity); ctx.beginPath(); ctx.arc(x, y, size / 2, 0, Math.PI * 2); ctx.fill(); },
+    spray(e, x, y, size, color, opacity) { ctx.fillStyle = hexToRgba(color, opacity); for (let i = 0; i < 30; i++) { const ox=(Math.random()-0.5)*size*2, oy=(Math.random()-0.5)*size*2; ctx.fillRect(x+ox, y+oy, 1, 1);} },
+    calligraphy(e, x, y, size, color, opacity) { ctx.strokeStyle = hexToRgba(color, opacity); ctx.lineWidth = size; ctx.lineCap = 'butt'; ctx.lineTo(x + size / 2, y); ctx.stroke(); },
+    splatter(e, x, y, size, color, opacity) { ctx.fillStyle = hexToRgba(color, opacity); for (let i = 0; i < 20; i++) { const a=Math.random()*Math.PI*2, r=Math.random()*size; ctx.beginPath(); ctx.arc(x+Math.cos(a)*r, y+Math.sin(a)*r, size/10, 0, Math.PI*2); ctx.fill(); } },
+    watercolor(e, x, y, size, color, opacity) { ctx.strokeStyle = hexToRgba(color, opacity * 0.7); ctx.lineWidth = size; ctx.lineCap = 'round'; ctx.lineTo(x, y); ctx.stroke(); },
+    chalk(e, x, y, size, color, opacity) { ctx.fillStyle = hexToRgba(color, opacity * 0.5); for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(x+Math.random()*size-size/2, y+Math.random()*size-size/2, size/4, 0, Math.PI*2); ctx.fill(); } },
+    oil(e, x, y, size, color, opacity) { ctx.fillStyle = hexToRgba(color, opacity); ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI * 2); ctx.fill(); },
+    pencil(e, x, y, size, color, opacity) { ctx.strokeStyle = hexToRgba(color, opacity * 0.8); ctx.lineWidth = size / 2; ctx.lineCap = 'round'; ctx.lineTo(x, y); ctx.stroke(); },
+    neon(e, x, y, size, color, opacity) { ctx.strokeStyle = hexToRgba(color, opacity); ctx.shadowColor = color; ctx.shadowBlur = 10; ctx.lineWidth = size; ctx.lineTo(x, y); ctx.stroke(); ctx.shadowBlur = 0; },
+    glitter(e, x, y, size, color, opacity) { ctx.fillStyle = hexToRgba(color, opacity); for (let i = 0; i < 10; i++) { ctx.fillRect(x+Math.random()*size-size/2, y+Math.random()*size-size/2, 2, 2);} },
+    textured(e, x, y, size, color, opacity) { ctx.strokeStyle = hexToRgba(color, opacity); ctx.lineWidth = size; ctx.lineTo(x, y); ctx.stroke(); },
+    pattern(e, x, y, size, color, opacity) { ctx.fillStyle = hexToRgba(color, opacity); ctx.beginPath(); ctx.arc(x, y, size/3, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(x+size/2, y, size/6, 0, Math.PI*2); ctx.fill(); },
+    airbrush(e, x, y, size, color, opacity) { for (let i=0;i<20;i++){const ox=(Math.random()-0.5)*size, oy=(Math.random()-0.5)*size; ctx.fillStyle=hexToRgba(color, opacity*Math.random()); ctx.fillRect(x+ox, y+oy, 1, 1);} },
+    star(e, x, y, size, color, opacity) { ctx.strokeStyle = hexToRgba(color, opacity); drawStar(x, y, 5, size, size / 2); },
+    heart(e, x, y, size, color, opacity) { ctx.strokeStyle = hexToRgba(color, opacity); drawHeart(x, y, size); },
+    zigzag(e, x, y, size, color, opacity) { ctx.strokeStyle = hexToRgba(color, opacity); ctx.lineWidth = size; ctx.lineTo(x + (Math.random() - 0.5) * size, y + (Math.random() - 0.5) * size); ctx.stroke(); },
+    scatter(e, x, y, size, color, opacity) { ctx.fillStyle = hexToRgba(color, opacity); for (let i=0;i<5;i++){ctx.beginPath(); ctx.arc(x+Math.random()*size-size/2, y+Math.random()*size-size/2, size/6, 0, Math.PI*2); ctx.fill();} },
+    crayon(e, x, y, size, color, opacity) { ctx.strokeStyle = hexToRgba(color, opacity * 0.9); ctx.lineWidth = size; ctx.lineCap = 'round'; ctx.lineTo(x, y); ctx.stroke(); }
   };
 
-  // DRAWING (disabled when transform/crop tools are active)
+  // Drawing (disabled during select/transform/crop)
   canvas.addEventListener('mousedown', (e) => {
-    if (currentTool === 'shape' || currentTool === 'fill' || currentTool === 'transform' || currentTool === 'cropImage') return;
+    if (['shape','fill','transform','cropImage','select'].includes(currentTool)) return;
     const rect = canvas.getBoundingClientRect();
     lastX = e.clientX - rect.left;
     lastY = e.clientY - rect.top;
@@ -406,38 +215,31 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.beginPath();
     ctx.moveTo(lastX, lastY);
   });
-
   canvas.addEventListener('mousemove', (e) => {
-    if (!isDrawing || currentTool === 'fill' || currentTool === 'shape' || currentTool === 'transform' || currentTool === 'cropImage') return;
+    if (!isDrawing || ['fill','shape','transform','cropImage','select'].includes(currentTool)) return;
     const rect = canvas.getBoundingClientRect();
     const currentX = e.clientX - rect.left;
     const currentY = e.clientY - rect.top;
     const size = parseInt(brushSizeInput.value, 10);
     const opacity = parseFloat(opacityInput.value);
     const color = brushColorInput.value;
-
     ctx.globalCompositeOperation = (currentTool === 'eraser') ? 'destination-out' : 'source-over';
 
     if (symmetryCheckbox.checked) {
-      ctx.beginPath();
-      ctx.moveTo(lastX, lastY);
+      ctx.beginPath(); ctx.moveTo(lastX, lastY);
       brushFunctions[currentBrush](e, currentX, currentY, size, color, opacity);
-      ctx.beginPath();
-      ctx.moveTo(canvas.width - lastX, lastY);
+      ctx.beginPath(); ctx.moveTo(canvas.width - lastX, lastY);
       brushFunctions[currentBrush](e, canvas.width - currentX, currentY, size, color, opacity);
     } else {
-      ctx.beginPath();
-      ctx.moveTo(lastX, lastY);
+      ctx.beginPath(); ctx.moveTo(lastX, lastY);
       brushFunctions[currentBrush](e, currentX, currentY, size, color, opacity);
     }
-    lastX = currentX;
-    lastY = currentY;
+    lastX = currentX; lastY = currentY;
   });
-
   canvas.addEventListener('mouseup', () => { isDrawing = false; });
   canvas.addEventListener('mouseout', () => { isDrawing = false; });
 
-  // FILL TOOL
+  // Fill tool
   canvas.addEventListener('mousedown', (e) => {
     if (currentTool !== 'fill') return;
     const rect = canvas.getBoundingClientRect();
@@ -445,12 +247,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const y = Math.floor(e.clientY - rect.top);
     saveState();
     floodFill(x, y, brushColorInput.value);
-    // keep base snapshot in sync if overlay exists
     if (imageObj) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     renderOverlay();
   });
 
-  // SHAPE TOOL (save before preview)
+  // Shape tool
   let shapeActive = false;
   canvas.addEventListener('mousedown', (e) => {
     if (currentTool !== 'shape') return;
@@ -471,84 +272,109 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.lineWidth = parseInt(brushSizeInput.value, 10);
 
     const shape = shapeTypeSelect.value;
-    const w = currX - lastX;
-    const h = currY - lastY;
+    const w = currX - lastX, h = currY - lastY;
 
     if (shape === 'line' || shape === 'dottedLine') {
-      ctx.beginPath();
-      ctx.moveTo(lastX, lastY);
+      ctx.beginPath(); ctx.moveTo(lastX, lastY);
       if (shape === 'dottedLine') ctx.setLineDash([2, 6]);
-      ctx.lineTo(currX, currY);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.lineTo(currX, currY); ctx.stroke(); ctx.setLineDash([]);
     } else if (shape === 'rectangle' || shape === 'dottedRectangle') {
       if (shape === 'dottedRectangle') ctx.setLineDash([2, 6]);
-      ctx.strokeRect(lastX, lastY, w, h);
-      ctx.setLineDash([]);
+      ctx.strokeRect(lastX, lastY, w, h); ctx.setLineDash([]);
     } else if (shape === 'circle') {
       const radius = Math.sqrt(w * w + h * h);
-      ctx.beginPath();
-      ctx.arc(lastX, lastY, radius, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.beginPath(); ctx.arc(lastX, lastY, radius, 0, Math.PI * 2); ctx.stroke();
     } else if (shape === 'ellipse' || shape === 'oval') {
       ctx.beginPath();
       ctx.ellipse(lastX + w / 2, lastY + h / 2, Math.abs(w / 2), Math.abs(h / 2), 0, 0, Math.PI * 2);
       ctx.stroke();
     } else if (shape === 'star') {
-      const r = Math.max(Math.abs(w), Math.abs(h));
-      drawStar(lastX, lastY, 5, r, r / 2);
+      const r = Math.max(Math.abs(w), Math.abs(h)); drawStar(lastX, lastY, 5, r, r / 2);
     } else if (shape === 'heart') {
       drawHeart(lastX, lastY, Math.max(Math.abs(w), Math.abs(h)));
     }
   });
-  canvas.addEventListener('mouseup', () => {
-    if (currentTool === 'shape' && shapeActive) {
-      shapeActive = false;
-    }
-  });
+  canvas.addEventListener('mouseup', () => { if (currentTool === 'shape') shapeActive = false; });
 
-  // BACKGROUND SELECTOR
+  // Background selector
   backgroundPatternSelect.addEventListener('change', () => {
     const pattern = backgroundPatternSelect.value;
     canvasContainer.className = 'canvas-container ' + pattern;
   });
 
-  // IMAGE INSERTION (auto-switch to Transform)
-  addImageButton.addEventListener('click', () => {
-    addImageInput.click();
-  });
-
-  addImageInput.addEventListener('change', (e) => {
+  // Add Image -> overlay
+  document.getElementById('addImageButton').addEventListener('click', () => document.getElementById('addImageInput').click());
+  document.getElementById('addImageInput').addEventListener('change', (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
-        // Snapshot base (without the overlay image)
         baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-        // Fit image within canvas
         const scale = Math.min(canvas.width / img.width, canvas.height / img.height, 1);
-        const w = Math.floor(img.width * scale);
-        const h = Math.floor(img.height * scale);
-        const x = Math.floor((canvas.width - w) / 2);
-        const y = Math.floor((canvas.height - h) / 2);
-
+        const w = Math.floor(img.width * scale), h = Math.floor(img.height * scale);
+        const x = Math.floor((canvas.width - w) / 2), y = Math.floor((canvas.height - h) / 2);
         imageObj = { img, x, y, w, h, angle: 0 };
-        // Show transform tool
-        toolSelect.value = 'transform';
-        currentTool = 'transform';
-        updateTransformBox();
-        renderOverlay();
+        toolSelect.value = 'transform'; currentTool = 'transform';
+        updateTransformBox(); renderOverlay();
       };
       img.src = reader.result;
     };
     reader.readAsDataURL(file);
-    addImageInput.value = '';
+    e.target.value = '';
   });
 
-  // Overlay rendering: base + transformed image
+  // Selection tool: create overlay from selected region
+  canvas.addEventListener('mousedown', (e) => {
+    if (currentTool !== 'select') return;
+    const rect = canvas.getBoundingClientRect();
+    selectStartX = e.clientX - rect.left;
+    selectStartY = e.clientY - rect.top;
+    isSelecting = true;
+    selectRect = null;
+    selectOverlay.style.display = 'block';
+  });
+  canvas.addEventListener('mousemove', (e) => {
+    if (!isSelecting || currentTool !== 'select') return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const x1 = Math.min(selectStartX, x), y1 = Math.min(selectStartY, y);
+    const w = Math.abs(x - selectStartX), h = Math.abs(y - selectStartY);
+    selectRect = { x: x1, y: y1, w, h };
+    Object.assign(selectOverlay.style, {
+      left: x1 + 'px', top: y1 + 'px', width: w + 'px', height: h + 'px'
+    });
+  });
+  canvas.addEventListener('mouseup', () => {
+    if (!isSelecting || currentTool !== 'select') return;
+    isSelecting = false;
+    selectOverlay.style.display = 'none';
+    if (!selectRect || selectRect.w < 2 || selectRect.h < 2) { selectRect = null; return; }
+
+    // Extract selected region into an overlay image
+    const off = document.createElement('canvas');
+    off.width = selectRect.w; off.height = selectRect.h;
+    const offCtx = off.getContext('2d');
+    offCtx.drawImage(canvas, selectRect.x, selectRect.y, selectRect.w, selectRect.h, 0, 0, selectRect.w, selectRect.h);
+
+    const img = new Image();
+    img.onload = () => {
+      saveState();
+      // Clear selected area to avoid duplication 
+      ctx.clearRect(selectRect.x, selectRect.y, selectRect.w, selectRect.h);
+
+      baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      imageObj = { img, x: selectRect.x, y: selectRect.y, w: selectRect.w, h: selectRect.h, angle: 0 };
+      toolSelect.value = 'transform'; currentTool = 'transform';
+      updateTransformBox(); renderOverlay();
+      selectRect = null;
+    };
+    img.src = off.toDataURL('image/png');
+  });
+
+  // Overlay rendering
   function renderOverlay() {
     if (!imageObj || !baseImageData) return;
     ctx.putImageData(baseImageData, 0, 0);
@@ -561,7 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Transform box sync
   function updateTransformBox() {
-    if (!imageObj) {
+    if (!imageObj || currentTool !== 'transform') {
       transformBox.style.display = 'none';
       return;
     }
@@ -571,17 +397,15 @@ document.addEventListener('DOMContentLoaded', () => {
     transformBox.style.transform = `translate(${imageObj.x}px, ${imageObj.y}px) rotate(${imageObj.angle || 0}rad)`;
   }
 
-  // Hit helpers
   function canvasPoint(evt) {
     const r = canvas.getBoundingClientRect();
     return { x: evt.clientX - r.left, y: evt.clientY - r.top };
   }
 
   // Transform interactions
-  transformBox.addEventListener('mousedown', (e) => {
+  transformBox.addEventListener('pointerdown', (e) => {
     if (!imageObj || currentTool !== 'transform') return;
-
-    // Ensure base snapshot exists
+    transformBox.setPointerCapture(e.pointerId);
     if (!baseImageData) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
     const t = e.target;
@@ -594,11 +418,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const p = canvasPoint(e);
     startMouse = p;
     startState = { x: imageObj.x, y: imageObj.y, w: imageObj.w, h: imageObj.h, angle: imageObj.angle || 0 };
-
     e.preventDefault();
   });
 
-  window.addEventListener('mousemove', (e) => {
+  transformBox.addEventListener('pointermove', (e) => {
     if (!imageObj || currentTool !== 'transform' || !transformMode) return;
     const p = canvasPoint(e);
     const dx = p.x - startMouse.x;
@@ -608,50 +431,32 @@ document.addEventListener('DOMContentLoaded', () => {
       imageObj.x = startState.x + dx;
       imageObj.y = startState.y + dy;
     } else if (transformMode === 'resize') {
-      // Resize in unrotated space (approx) for simplicity
       let x = startState.x, y = startState.y, w = startState.w, h = startState.h;
-
       const aspect = w / h;
       const keepAspect = e.shiftKey;
-
       const applyResize = (left, top, right, bottom) => {
         if (left)  { x = startState.x + dx; w = startState.w - dx; }
         if (right) { w = startState.w + dx; }
         if (top)   { y = startState.y + dy; h = startState.h - dy; }
         if (bottom){ h = startState.h + dy; }
-
-        // Minimum size
-        w = Math.max(5, w);
-        h = Math.max(5, h);
-
-        // Keep aspect if requested
+        w = Math.max(5, w); h = Math.max(5, h);
         if (keepAspect) {
           const newAspect = w / h;
-          if (newAspect > aspect) h = w / aspect;
-          else w = h * aspect;
+          if (newAspect > aspect) h = w / aspect; else w = h * aspect;
         }
-
-        // Prevent flip: adjust x/y if size changed from the side
-        if (left)  x = startState.x + (startState.w - w);
-        if (top)   y = startState.y + (startState.h - h);
+        if (left) x = startState.x + (startState.w - w);
+        if (top)  y = startState.y + (startState.h - h);
       };
-
       const map = {
-        'nw': [true, true, false, false],
-        'n':  [false, true, false, false],
-        'ne': [false, true, true, false],
-        'e':  [false, false, true, false],
-        'se': [false, false, true, true],
-        's':  [false, false, false, true],
-        'sw': [true, false, false, true],
-        'w':  [true, false, false, false]
+        'nw': [true, true, false, false], 'n': [false, true, false, false],
+        'ne': [false, true, true, false], 'e': [false, false, true, false],
+        'se': [false, false, true, true], 's': [false, false, false, true],
+        'sw': [true, false, false, true], 'w': [true, false, false, false]
       };
       const sides = map[activeHandle] || [false, false, false, false];
       applyResize(...sides);
-
       imageObj.x = x; imageObj.y = y; imageObj.w = w; imageObj.h = h;
     } else if (transformMode === 'rotate') {
-      // Rotate around center
       const cx = startState.x + startState.w / 2;
       const cy = startState.y + startState.h / 2;
       const angle0 = Math.atan2(startMouse.y - cy, startMouse.x - cx);
@@ -663,56 +468,28 @@ document.addEventListener('DOMContentLoaded', () => {
     renderOverlay();
   });
 
-  window.addEventListener('mouseup', () => {
+  transformBox.addEventListener('pointerup', (e) => {
     if (!transformMode) return;
-    transformMode = null;
-    activeHandle = null;
-    // No immediate saveState here; we save when committing (tool change)
+    transformBox.releasePointerCapture(e.pointerId);
+    transformMode = null; activeHandle = null;
   });
 
-  // TOOL CHANGES: show/hide overlays and commit transforms
-  toolSelect.addEventListener('change', () => {
-    currentTool = toolSelect.value;
-    shapeOptionsDiv.style.display = (currentTool === 'shape') ? 'inline-block' : 'none';
-
-    if (currentTool !== 'transform') {
-      // Commit overlay image to base if present (flatten)
-      if (imageObj && baseImageData) {
-        saveState();
-        // Draw final composited result to canvas
-        renderOverlay();
-        // Update base snapshot and clear overlay state
-        baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        imageObj = null;
-        updateTransformBox();
-      }
-    } else {
-      // Entering transform: ensure we have a base snapshot
-      if (!baseImageData) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      updateTransformBox();
-      renderOverlay();
+  // Commit overlay when leaving transform or on double-click
+  transformBox.addEventListener('dblclick', () => commitOverlay());
+  function commitOverlay() {
+    if (imageObj && baseImageData) {
+      saveState();
+      renderOverlay(); // draw final composite into canvas
+      baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height); // update base
+      imageObj = null; updateTransformBox();
     }
+  }
 
-    // Crop overlay visibility
-    cropOverlay.style.display = currentTool === 'cropImage' ? 'block' : 'none';
-    if (currentTool !== 'cropImage') {
-      isCropping = false;
-      cropRect = null;
-      cropOverlay.style.display = 'none';
-    }
-  });
-
-  // CROP IMAGE (works when imageObj exists and angle ~ 0)
-  let isCropping = false;
-  let cropStartX = 0, cropStartY = 0;
-  let cropRect = null;
-
+  // Crop image (only when angle ~ 0)
+  let isCropping = false, cropStartX = 0, cropStartY = 0, cropRect = null;
   canvas.addEventListener('mousedown', (e) => {
     if (currentTool !== 'cropImage') return;
-    if (!imageObj) {
-      // Nothing to crop
-      return;
-    }
+    if (!imageObj) return;
     if (Math.abs(imageObj.angle || 0) > 0.0001) {
       alert('Crop supports only non-rotated images. Please set rotation to 0 first.');
       return;
@@ -722,102 +499,87 @@ document.addEventListener('DOMContentLoaded', () => {
     cropStartY = e.clientY - rect.top;
     isCropping = true;
   });
-
   canvas.addEventListener('mousemove', (e) => {
     if (!isCropping || currentTool !== 'cropImage' || !imageObj) return;
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const x1 = Math.min(cropStartX, x);
-    const y1 = Math.min(cropStartY, y);
-    const w = Math.abs(x - cropStartX);
-    const h = Math.abs(y - cropStartY);
+    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    const x1 = Math.min(cropStartX, x), y1 = Math.min(cropStartY, y);
+    const w = Math.abs(x - cropStartX), h = Math.abs(y - cropStartY);
     cropRect = { x: x1, y: y1, w, h };
-
-    cropOverlay.style.left = x1 + 'px';
-    cropOverlay.style.top = y1 + 'px';
-    cropOverlay.style.width = w + 'px';
-    cropOverlay.style.height = h + 'px';
-    cropOverlay.style.display = 'block';
+    Object.assign(cropOverlay.style, { left: x1+'px', top: y1+'px', width: w+'px', height: h+'px', display: 'block' });
   });
-
   canvas.addEventListener('mouseup', () => {
     if (!isCropping || currentTool !== 'cropImage' || !imageObj || !cropRect) return;
-    isCropping = false;
-    cropOverlay.style.display = 'none';
-
-    // Intersection with image bounds (no rotation)
+    isCropping = false; cropOverlay.style.display = 'none';
     const ix1 = Math.max(cropRect.x, imageObj.x);
     const iy1 = Math.max(cropRect.y, imageObj.y);
     const ix2 = Math.min(cropRect.x + cropRect.w, imageObj.x + imageObj.w);
     const iy2 = Math.min(cropRect.y + cropRect.h, imageObj.y + imageObj.h);
-    const iw = Math.max(0, ix2 - ix1);
-    const ih = Math.max(0, iy2 - iy1);
+    const iw = Math.max(0, ix2 - ix1), ih = Math.max(0, iy2 - iy1);
     if (iw <= 0 || ih <= 0) return;
 
-    // Crop underlying image source
-    const off = document.createElement('canvas');
-    off.width = iw; off.height = ih;
+    const off = document.createElement('canvas'); off.width = iw; off.height = ih;
     const offCtx = off.getContext('2d');
-    const sx = ix1 - imageObj.x;
-    const sy = iy1 - imageObj.y;
-
+    const sx = ix1 - imageObj.x, sy = iy1 - imageObj.y;
     offCtx.drawImage(imageObj.img, sx, sy, iw, ih, 0, 0, iw, ih);
 
     const croppedImg = new Image();
     croppedImg.onload = () => {
-      imageObj.img = croppedImg;
-      imageObj.x = ix1;
-      imageObj.y = iy1;
-      imageObj.w = iw;
-      imageObj.h = ih;
-
-      updateTransformBox();
-      renderOverlay();
+      imageObj.img = croppedImg; imageObj.x = ix1; imageObj.y = iy1; imageObj.w = iw; imageObj.h = ih;
+      updateTransformBox(); renderOverlay();
     };
     croppedImg.src = off.toDataURL('image/png');
   });
 
-  // ACTION BUTTONS
+  // Tool changes
+  toolSelect.addEventListener('change', () => {
+    currentTool = toolSelect.value;
+    shapeOptionsDiv.style.display = (currentTool === 'shape') ? 'inline-block' : 'none';
+
+    if (currentTool !== 'transform') {
+      commitOverlay();
+    } else {
+      if (!baseImageData) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      updateTransformBox(); renderOverlay();
+    }
+
+    // Overlays visibility
+    cropOverlay.style.display = currentTool === 'cropImage' ? 'block' : 'none';
+    if (currentTool !== 'cropImage') { isCropping = false; cropRect = null; cropOverlay.style.display = 'none'; }
+
+    if (currentTool !== 'select') { isSelecting = false; selectRect = null; selectOverlay.style.display = 'none'; }
+  });
+
+  // Action buttons
   newCanvasButton.addEventListener('click', () => {
     ctx.globalCompositeOperation = 'source-over';
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    undoStack = [];
-    redoStack = [];
-    imageObj = null;
-    baseImageData = null;
+    undoStack = []; redoStack = [];
+    imageObj = null; baseImageData = null;
     updateTransformBox();
+    selectOverlay.style.display = 'none'; cropOverlay.style.display = 'none';
   });
   clearCanvasButton.addEventListener('click', () => {
     ctx.globalCompositeOperation = 'source-over';
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    undoStack = [];
-    redoStack = [];
-    imageObj = null;
-    baseImageData = null;
+    undoStack = []; redoStack = [];
+    imageObj = null; baseImageData = null;
     updateTransformBox();
+    selectOverlay.style.display = 'none'; cropOverlay.style.display = 'none';
   });
   undoCanvasButton.addEventListener('click', undo);
   redoCanvasButton.addEventListener('click', redo);
   downloadCanvasButton.addEventListener('click', () => {
-    // If overlay exists but not committed, flatten before download
-    if (imageObj && baseImageData) {
-      renderOverlay();
-    }
+    if (imageObj && baseImageData) renderOverlay(); // flatten view for export
     const link = document.createElement('a');
     link.download = 'DrawNow_art.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
   });
 
-  // UI SYNC
-  brushSizeInput.addEventListener('input', () => {
-    brushSizeValue.textContent = brushSizeInput.value;
-  });
-  opacityInput.addEventListener('input', () => {
-    opacityValue.textContent = opacityInput.value;
-  });
-
+  // UI sync
+  brushSizeInput.addEventListener('input', () => { brushSizeValue.textContent = brushSizeInput.value; });
+  opacityInput.addEventListener('input', () => { opacityValue.textContent = opacityInput.value; });
   let recentColors = [];
   function addRecentColor(color) {
     if (!recentColors.includes(color)) {
@@ -829,7 +591,5 @@ document.addEventListener('DOMContentLoaded', () => {
       recentColorsDiv.appendChild(swatch);
     }
   }
-  brushColorInput.addEventListener('change', () => {
-    addRecentColor(brushColorInput.value);
-  });
+  brushColorInput.addEventListener('change', () => addRecentColor(brushColorInput.value));
 });
