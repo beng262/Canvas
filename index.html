@@ -41,7 +41,7 @@
         <option value="eraser">Eraser</option>
         <option value="fill">Fill</option>
         <option value="shape">Shapes</option>
-        <option value="moveImage">Move Image</option>
+        <option value="transform">Transform Image</option>
         <option value="cropImage">Crop Image</option>
       </select>
     </div>
@@ -73,7 +73,7 @@
       </select>
     </div>
 
-    <!-- Shape options (shown only when tool is "shape") -->
+    <!-- Shape options -->
     <div class="toolbar-item" id="shapeOptions" style="display:none;">
       <label for="shapeType">Shape:</label>
       <select id="shapeType">
@@ -113,12 +113,12 @@
       <button id="undoCanvas">⟲ Undo</button>
       <button id="redoCanvas">⟳ Redo</button>
       <button id="downloadCanvas">Download</button>
-      <button id="darkModeToggle">☀</button>
+      <button id="darkModeToggle">☀️</button>
       <button id="addImageButton">Add Image</button>
       <input type="file" id="addImageInput" accept="image/*" style="display:none;">
     </div>
 
-    <!-- Symmetry mode (toggle with shortcut Y) -->
+    <!-- Symmetry mode -->
     <div class="toolbar-item">
       <label>
         <input type="checkbox" id="symmetry">
@@ -130,6 +130,21 @@
   <!-- Drawing Canvas Container -->
   <div class="canvas-container plain" id="canvasContainer">
     <canvas id="drawingCanvas" width="800" height="600"></canvas>
+
+    <!-- Transform box overlay -->
+    <div id="transformBox" class="transform-box" style="display:none;">
+      <div class="handle handle-nw" data-handle="nw"></div>
+      <div class="handle handle-n"  data-handle="n"></div>
+      <div class="handle handle-ne" data-handle="ne"></div>
+      <div class="handle handle-e"  data-handle="e"></div>
+      <div class="handle handle-se" data-handle="se"></div>
+      <div class="handle handle-s"  data-handle="s"></div>
+      <div class="handle handle-sw" data-handle="sw"></div>
+      <div class="handle handle-w"  data-handle="w"></div>
+      <div class="rotate-handle" data-rotate="true" title="Rotate"></div>
+    </div>
+
+    <!-- Crop overlay -->
     <div id="cropOverlay" class="crop-overlay" style="display:none;"></div>
   </div>
 
