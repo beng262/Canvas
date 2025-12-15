@@ -50,13 +50,10 @@ button:hover {
 }
 
 /* Recent Colors Palette */
-#recentColors {
-  margin-top: 5px;
-}
+#recentColors { margin-top: 5px; }
 .color-swatch {
   display: inline-block;
-  width: 20px;
-  height: 20px;
+  width: 20px; height: 20px;
   margin-right: 3px;
   border: 1px solid #C3B9FF;
   cursor: pointer;
@@ -71,19 +68,13 @@ button:hover {
   position: relative;
   background-size: cover;
   background-position: center;
-  overflow: hidden;
+  overflow: visible; /* for rotate handle */
 }
 
-/* Predefined Backgrounds */
-.canvas-container.plain {
-  background-color: #fff;
-}
-.canvas-container.dark {
-  background-color: #000;
-}
-.canvas-container.notebook {
-  background: repeating-linear-gradient(0deg, #fff, #fff 23px, #d1d1d1 24px);
-}
+/* Backgrounds */
+.canvas-container.plain { background-color: #fff; }
+.canvas-container.dark  { background-color: #000; }
+.canvas-container.notebook { background: repeating-linear-gradient(0deg, #fff, #fff 23px, #d1d1d1 24px); }
 .canvas-container.pastel {
   background: linear-gradient(45deg, #A3D3FF 25%, transparent 25%) -50px 0,
               linear-gradient(-45deg, #FFB2F7 25%, transparent 25%) -50px 0,
@@ -91,31 +82,16 @@ button:hover {
               linear-gradient(-45deg, transparent 75%, #C3B9FF 75%);
   background-size: 100px 100px;
 }
-.canvas-container.fabric {
-  background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/fabric%20copy.png');
-}
-.canvas-container.paper {
-  background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/10366807.jpg');
-}
-.canvas-container.grid {
-  background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/sl_072622_51930_13.jpg');
-}
-.canvas-container.oldpaper {
-  background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/37416bdfbbe287d1f1cd44fa8dfd3159.jpg');
-}
-.canvas-container.wood {
-  background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/wood.jpg');
-}
-.canvas-container.marble {
-  background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/marble%20copy.png');
-}
+.canvas-container.fabric { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/fabric%20copy.png'); }
+.canvas-container.paper  { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/10366807.jpg'); }
+.canvas-container.grid   { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/sl_072622_51930_13.jpg'); }
+.canvas-container.oldpaper { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/37416bdfbbe287d1f1cd44fa8dfd3159.jpg'); }
+.canvas-container.wood   { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/wood.jpg'); }
+.canvas-container.marble { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/marble%20copy.png'); }
 
-/* The drawing canvas itself */
+/* Canvas */
 canvas {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 1;
+  position: absolute; left: 0; top: 0; z-index: 1;
 }
 
 /* Crop overlay */
@@ -126,21 +102,29 @@ canvas {
   z-index: 4;
 }
 
-/* Transform box overlay */
+/* Selection marquee */
+.select-overlay {
+  position: absolute;
+  border: 2px dashed #3b82f6; /* blue */
+  background: rgba(59,130,246,0.12);
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* Transform box */
 .transform-box {
   position: absolute;
-  border: 1.5px solid #3b82f6; /* blue-500 */
+  border: 1.5px solid #3b82f6;
   box-sizing: border-box;
   z-index: 5;
   transform-origin: top left;
+  touch-action: none;
+  pointer-events: auto;
+  background: rgba(0,0,0,0.001);
 }
 .transform-box .handle {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  background: #ffffff;
-  border: 2px solid #3b82f6;
-  border-radius: 50%;
+  position: absolute; width: 12px; height: 12px;
+  background: #ffffff; border: 2px solid #3b82f6; border-radius: 50%;
   box-sizing: border-box;
 }
 .transform-box .handle-nw { left: -8px; top: -8px; cursor: nwse-resize; }
@@ -154,59 +138,21 @@ canvas {
 
 .rotate-handle {
   position: absolute;
-  left: calc(50% - 8px);
-  top: -36px;
-  width: 16px;
-  height: 16px;
-  background: #ffffff;
-  border: 2px solid #ef4444; /* red-500 */
-  border-radius: 50%;
-  cursor: grab;
+  left: calc(50% - 8px); top: -36px;
+  width: 16px; height: 16px; background: #ffffff;
+  border: 2px solid #ef4444; border-radius: 50%; cursor: grab;
 }
 .rotate-handle::before {
-  content: '';
-  position: absolute;
-  top: 16px;
-  left: 6px;
-  width: 2px;
-  height: 18px;
-  background: #ef4444;
+  content: ''; position: absolute; top: 16px; left: 6px; width: 2px; height: 18px; background: #ef4444;
 }
 
-/* --- Dark Mode Overrides --- */
-body.dark {
-  background: linear-gradient(90deg, #0b1020, #1a1020, #121427);
-  color: #e5e7eb;
-}
-
-body.dark header h1 {
-  color: #e5e7eb;
-}
-
-body.dark .toolbar {
-  background-color: rgba(17, 24, 39, 0.9);
-}
-
-body.dark .toolbar-item {
-  color: #d1d5db;
-}
-
-body.dark button {
-  background-color: #8b5cf6;
-  color: #ffffff;
-}
-body.dark button:hover {
-  background-color: #7c3aed;
-}
-
-body.dark .color-swatch {
-  border-color: #4b5563;
-}
-
-body.dark .canvas-container {
-  border-color: #4b5563;
-}
-
-body.dark .canvas-container.plain {
-  background-color: #ffffff;
-}
+/* Dark Mode */
+body.dark { background: linear-gradient(90deg, #0b1020, #1a1020, #121427); color: #e5e7eb; }
+body.dark header h1 { color: #e5e7eb; }
+body.dark .toolbar { background-color: rgba(17, 24, 39, 0.9); }
+body.dark .toolbar-item { color: #d1d5db; }
+body.dark button { background-color: #8b5cf6; color: #ffffff; }
+body.dark button:hover { background-color: #7c3aed; }
+body.dark .color-swatch { border-color: #4b5563; }
+body.dark .canvas-container { border-color: #4b5563; }
+body.dark .canvas-container.plain { background-color: #ffffff; }
