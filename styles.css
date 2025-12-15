@@ -114,30 +114,34 @@ canvas {
   z-index: 1;
 }
 
-/* Dark Mode Overrides           */
+/* Dark Mode Overrides */
 body.dark {
   background: linear-gradient(90deg, #0b1020, #1a1020, #121427);
   color: #e5e7eb;
 }
 
+body.dark header h1 {
+  color: #e5e7eb;
+}
+
 body.dark .toolbar {
-  background-color: rgba(17,24,39,0.9); /* slate-900 @ 0.9 */
+  background-color: rgba(17, 24, 39, 0.9); /* dark slate backdrop */
 }
 
 body.dark .toolbar-item {
-  color: #d1d5db; /* gray-300 */
+  color: #d1d5db; /* light gray text */
 }
 
 body.dark button {
-  background-color: #8b5cf6; /* violet-500 */
+  background-color: #8b5cf6;
   color: #ffffff;
 }
 body.dark button:hover {
-  background-color: #7c3aed; /* violet-600 */
+  background-color: #7c3aed;
 }
 
 body.dark .color-swatch {
-  border-color: #4b5563; /* gray-600 */
+  border-color: #4b5563;
 }
 
 body.dark .canvas-container {
