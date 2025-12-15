@@ -32,30 +32,51 @@ document.addEventListener('DOMContentLoaded', () => {
   const symmetryCheckbox = document.getElementById('symmetry');
   const canvasContainer = document.getElementById('canvasContainer');
 
-  // ----- THEME (body.dark + localStorage) -----
-  const THEME_KEY = 'drawnow-theme';
-  function applyTheme(mode) {
-    const isDark = mode === 'dark';
-    document.body.classList.toggle('dark', isDark);
-    if (darkModeToggle) {
-      darkModeToggle.textContent = isDark ? '🌙' : '☀';
-      darkModeToggle.setAttribute('aria-pressed', String(isDark));
-      darkModeToggle.title = isDark ? 'Switch to light mode' : 'Switch to dark mode';
-    }
-  }
-  function initTheme() {
-    const stored = localStorage.getItem(THEME_KEY);
-    applyTheme(stored === 'dark' ? 'dark' : 'light');
-  }
+// ----- THEME (body.dark + localStorage + system fallback) -----
+const THEME_KEY = 'drawnow-theme';
+
+function getSystemTheme() {
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+    ? 'dark'
+    : 'light';
+}
+
+function applyTheme(mode) {
+  const isDark = mode === 'dark';
+  document.body.classList.toggle('dark', isDark);
   if (darkModeToggle) {
-    darkModeToggle.addEventListener('click', () => {
-      const isDark = document.body.classList.contains('dark');
-      const next = isDark ? 'light' : 'dark';
-      localStorage.setItem(THEME_KEY, next);
-      applyTheme(next);
-    });
+    darkModeToggle.textContent = isDark ? '🌙' : '☀';
+    darkModeToggle.setAttribute('aria-pressed', String(isDark));
+    darkModeToggle.title = isDark ? 'Switch to light mode' : 'Switch to dark mode';
   }
-  initTheme();
+}
+
+function initTheme() {
+  let stored = localStorage.getItem(THEME_KEY); // 'dark' | 'light' | null
+  if (stored !== 'dark' && stored !== 'light') {
+    stored = getSystemTheme(); // default to system preference on first load
+  }
+  applyTheme(stored);
+
+  // React to system changes ONLY if user hasn’t explicitly chosen
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  mq.addEventListener('change', () => {
+    const current = localStorage.getItem(THEME_KEY);
+    if (current !== 'dark' && current !== 'light') {
+      applyTheme(getSystemTheme());
+    }
+  });
+}
+
+if (darkModeToggle) {
+  darkModeToggle.addEventListener('click', () => {
+    const isDark = document.body.classList.contains('dark');
+    const next = isDark ? 'light' : 'dark';
+    localStorage.setItem(THEME_KEY, next);
+    applyTheme(next);
+  });
+}
+initTheme();
 
   // ----- HISTORY -----
   function saveState() {
