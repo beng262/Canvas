@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let redoStack = [];
   const MAX_HISTORY = 50;
 
-  // UI
+  // UI elements
   const brushSizeInput = document.getElementById('brushSize');
   const brushSizeValue = document.getElementById('brushSizeValue');
   const opacityInput = document.getElementById('opacity');
@@ -32,25 +32,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const symmetryCheckbox = document.getElementById('symmetry');
   const canvasContainer = document.getElementById('canvasContainer');
 
-  // Overlays
+  // Overlays & transform
+  const selectionOverlay = document.getElementById('selectionOverlay');
   const cropOverlay = document.getElementById('cropOverlay');
-  const selectOverlay = document.getElementById('selectOverlay');
   const transformBox = document.getElementById('transformBox');
 
-  // Overlay image state (used by Add Image and Selection)
-  let imageObj = null;       // { img, x, y, w, h, angle }
-  let baseImageData = null;  // ImageData under overlay image
-  let transformMode = null;  // 'move' | 'resize' | 'rotate'
+  // Overlay state: can represent an inserted image OR a selected region
+  let overlayObj = null; // { img: HTMLImageElement, x, y, w, h, angle }
+  let baseImageData = null; // snapshot of canvas under overlay
+  let transformMode = null; // 'move' | 'resize' | 'rotate'
   let activeHandle = null;
   let startMouse = { x: 0, y: 0 };
-  let startState = null;     // { x, y, w, h, angle }
+  let startState = null; // { x, y, w, h, angle }
 
   // Selection state
   let isSelecting = false;
   let selectStartX = 0, selectStartY = 0;
-  let selectRect = null;     // { x, y, w, h }
+  let selectRect = null; // { x, y, w, h }
 
-  // THEME
+  // THEME (body.dark + localStorage + emoji ☀️ / 🌙)
   const THEME_KEY = 'drawnow-theme';
   function applyTheme(mode) {
     const isDark = mode === 'dark';
@@ -66,15 +66,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (stored !== 'dark' && stored !== 'light') stored = 'light';
     applyTheme(stored);
   }
-  darkModeToggle.addEventListener('click', () => {
-    const isDark = document.body.classList.contains('dark');
-    const next = isDark ? 'light' : 'dark';
-    localStorage.setItem(THEME_KEY, next);
-    applyTheme(next);
-  });
+  if (darkModeToggle) {
+    darkModeToggle.addEventListener('click', () => {
+      const isDark = document.body.classList.contains('dark');
+      const next = isDark ? 'light' : 'dark';
+      localStorage.setItem(THEME_KEY, next);
+      applyTheme(next);
+    });
+  }
   initTheme();
 
-  // HISTORY
+  // HISTORY (save once before change)
   function saveState() {
     redoStack = [];
     try {
@@ -88,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
       redoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
       const prev = undoStack.pop();
       ctx.putImageData(prev, 0, 0);
-      if (imageObj) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      if (overlayObj) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       renderOverlay();
     } catch (e) {}
   }
@@ -98,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
       undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
       const next = redoStack.pop();
       ctx.putImageData(next, 0, 0);
-      if (imageObj) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      if (overlayObj) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       renderOverlay();
     } catch (e) {}
   }
@@ -164,7 +166,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // SHAPES
   function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
     let rot = (Math.PI / 2) * 3, x = cx, y = cy, step = Math.PI / spikes;
-    ctx.beginPath(); ctx.moveTo(cx, cy - outerRadius);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - outerRadius);
     for (let i = 0; i < spikes; i++) {
       x = cx + Math.cos(rot) * outerRadius; y = cy + Math.sin(rot) * outerRadius; ctx.lineTo(x, y); rot += step;
       x = cx + Math.cos(rot) * innerRadius; y = cy + Math.sin(rot) * innerRadius; ctx.lineTo(x, y); rot += step;
@@ -204,9 +207,9 @@ document.addEventListener('DOMContentLoaded', () => {
     crayon(e, x, y, size, color, opacity) { ctx.strokeStyle = hexToRgba(color, opacity * 0.9); ctx.lineWidth = size; ctx.lineCap = 'round'; ctx.lineTo(x, y); ctx.stroke(); }
   };
 
-  // Drawing (disabled during select/transform/crop)
+  // DRAWING (disabled when select/transform/crop active)
   canvas.addEventListener('mousedown', (e) => {
-    if (['shape','fill','transform','cropImage','select'].includes(currentTool)) return;
+    if (['shape','fill','select','transform','cropImage'].includes(currentTool)) return;
     const rect = canvas.getBoundingClientRect();
     lastX = e.clientX - rect.left;
     lastY = e.clientY - rect.top;
@@ -216,13 +219,14 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.moveTo(lastX, lastY);
   });
   canvas.addEventListener('mousemove', (e) => {
-    if (!isDrawing || ['fill','shape','transform','cropImage','select'].includes(currentTool)) return;
+    if (!isDrawing || ['fill','shape','select','transform','cropImage'].includes(currentTool)) return;
     const rect = canvas.getBoundingClientRect();
     const currentX = e.clientX - rect.left;
     const currentY = e.clientY - rect.top;
     const size = parseInt(brushSizeInput.value, 10);
     const opacity = parseFloat(opacityInput.value);
     const color = brushColorInput.value;
+
     ctx.globalCompositeOperation = (currentTool === 'eraser') ? 'destination-out' : 'source-over';
 
     if (symmetryCheckbox.checked) {
@@ -239,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
   canvas.addEventListener('mouseup', () => { isDrawing = false; });
   canvas.addEventListener('mouseout', () => { isDrawing = false; });
 
-  // Fill tool
+  // FILL TOOL
   canvas.addEventListener('mousedown', (e) => {
     if (currentTool !== 'fill') return;
     const rect = canvas.getBoundingClientRect();
@@ -247,11 +251,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const y = Math.floor(e.clientY - rect.top);
     saveState();
     floodFill(x, y, brushColorInput.value);
-    if (imageObj) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    if (overlayObj) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     renderOverlay();
   });
 
-  // Shape tool
+  // SHAPES (save before preview)
   let shapeActive = false;
   canvas.addEventListener('mousedown', (e) => {
     if (currentTool !== 'shape') return;
@@ -296,15 +300,17 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   canvas.addEventListener('mouseup', () => { if (currentTool === 'shape') shapeActive = false; });
 
-  // Background selector
+  // BACKGROUND SELECTOR
   backgroundPatternSelect.addEventListener('change', () => {
     const pattern = backgroundPatternSelect.value;
     canvasContainer.className = 'canvas-container ' + pattern;
   });
 
-  // Add Image -> overlay
-  document.getElementById('addImageButton').addEventListener('click', () => document.getElementById('addImageInput').click());
-  document.getElementById('addImageInput').addEventListener('change', (e) => {
+  // IMAGE INSERTION (auto-switch to Transform)
+  const addImageButton = document.getElementById('addImageButton');
+  const addImageInput = document.getElementById('addImageInput');
+  addImageButton.addEventListener('click', () => addImageInput.click());
+  addImageInput.addEventListener('change', (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
@@ -313,45 +319,63 @@ document.addEventListener('DOMContentLoaded', () => {
       img.onload = () => {
         baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const scale = Math.min(canvas.width / img.width, canvas.height / img.height, 1);
-        const w = Math.floor(img.width * scale), h = Math.floor(img.height * scale);
-        const x = Math.floor((canvas.width - w) / 2), y = Math.floor((canvas.height - h) / 2);
-        imageObj = { img, x, y, w, h, angle: 0 };
-        toolSelect.value = 'transform'; currentTool = 'transform';
-        updateTransformBox(); renderOverlay();
+        const w = Math.floor(img.width * scale);
+        const h = Math.floor(img.height * scale);
+        const x = Math.floor((canvas.width - w) / 2);
+        const y = Math.floor((canvas.height - h) / 2);
+
+        overlayObj = { img, x, y, w, h, angle: 0 };
+        toolSelect.value = 'transform';
+        currentTool = 'transform';
+        updateTransformBox();
+        renderOverlay();
       };
       img.src = reader.result;
     };
     reader.readAsDataURL(file);
-    e.target.value = '';
+    addImageInput.value = '';
   });
 
-  // Selection tool: create overlay from selected region
+  // SELECTION TOOL
+  function showSelection(x, y, w, h) {
+    selectionOverlay.style.display = 'block';
+    Object.assign(selectionOverlay.style, {
+      left: x + 'px',
+      top: y + 'px',
+      width: w + 'px',
+      height: h + 'px'
+    });
+  }
+  function hideSelection() {
+    selectionOverlay.style.display = 'none';
+  }
+
   canvas.addEventListener('mousedown', (e) => {
     if (currentTool !== 'select') return;
-    const rect = canvas.getBoundingClientRect();
-    selectStartX = e.clientX - rect.left;
-    selectStartY = e.clientY - rect.top;
+    const r = canvas.getBoundingClientRect();
+    selectStartX = e.clientX - r.left;
+    selectStartY = e.clientY - r.top;
     isSelecting = true;
-    selectRect = null;
-    selectOverlay.style.display = 'block';
+    hideSelection();
   });
   canvas.addEventListener('mousemove', (e) => {
     if (!isSelecting || currentTool !== 'select') return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const x1 = Math.min(selectStartX, x), y1 = Math.min(selectStartY, y);
-    const w = Math.abs(x - selectStartX), h = Math.abs(y - selectStartY);
+    const r = canvas.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    const y = e.clientY - r.top;
+    const x1 = Math.min(selectStartX, x);
+    const y1 = Math.min(selectStartY, y);
+    const w = Math.abs(x - selectStartX);
+    const h = Math.abs(y - selectStartY);
     selectRect = { x: x1, y: y1, w, h };
-    Object.assign(selectOverlay.style, {
-      left: x1 + 'px', top: y1 + 'px', width: w + 'px', height: h + 'px'
-    });
+    showSelection(x1, y1, w, h);
   });
   canvas.addEventListener('mouseup', () => {
-    if (!isSelecting || currentTool !== 'select') return;
+    if (!isSelecting || currentTool !== 'select' || !selectRect) return;
     isSelecting = false;
-    selectOverlay.style.display = 'none';
-    if (!selectRect || selectRect.w < 2 || selectRect.h < 2) { selectRect = null; return; }
+    hideSelection();
+
+    if (selectRect.w < 1 || selectRect.h < 1) return;
 
     // Extract selected region into an overlay image
     const off = document.createElement('canvas');
@@ -362,50 +386,56 @@ document.addEventListener('DOMContentLoaded', () => {
     const img = new Image();
     img.onload = () => {
       saveState();
-      // Clear selected area to avoid duplication 
+      // Erase selected area from base canvas and snapshot base
       ctx.clearRect(selectRect.x, selectRect.y, selectRect.w, selectRect.h);
-
       baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      imageObj = { img, x: selectRect.x, y: selectRect.y, w: selectRect.w, h: selectRect.h, angle: 0 };
-      toolSelect.value = 'transform'; currentTool = 'transform';
-      updateTransformBox(); renderOverlay();
+
+      // Create overlay from selection
+      overlayObj = { img, x: selectRect.x, y: selectRect.y, w: selectRect.w, h: selectRect.h, angle: 0 };
+      // Switch to transform automatically
+      toolSelect.value = 'transform';
+      currentTool = 'transform';
+      updateTransformBox();
+      renderOverlay();
       selectRect = null;
     };
     img.src = off.toDataURL('image/png');
   });
 
-  // Overlay rendering
+  // Overlay rendering: base + transformed overlay (prevents duplicates)
   function renderOverlay() {
-    if (!imageObj || !baseImageData) return;
+    if (!overlayObj || !baseImageData) return;
     ctx.putImageData(baseImageData, 0, 0);
     ctx.save();
-    ctx.translate(imageObj.x, imageObj.y);
-    ctx.rotate(imageObj.angle || 0);
-    ctx.drawImage(imageObj.img, 0, 0, imageObj.w, imageObj.h);
+    ctx.translate(overlayObj.x, overlayObj.y);
+    ctx.rotate(overlayObj.angle || 0);
+    ctx.drawImage(overlayObj.img, 0, 0, overlayObj.w, overlayObj.h);
     ctx.restore();
   }
 
   // Transform box sync
   function updateTransformBox() {
-    if (!imageObj || currentTool !== 'transform') {
+    if (!overlayObj || currentTool !== 'transform') {
       transformBox.style.display = 'none';
       return;
     }
     transformBox.style.display = 'block';
-    transformBox.style.width = imageObj.w + 'px';
-    transformBox.style.height = imageObj.h + 'px';
-    transformBox.style.transform = `translate(${imageObj.x}px, ${imageObj.y}px) rotate(${imageObj.angle || 0}rad)`;
+    transformBox.style.width = overlayObj.w + 'px';
+    transformBox.style.height = overlayObj.h + 'px';
+    transformBox.style.transform = `translate(${overlayObj.x}px, ${overlayObj.y}px) rotate(${overlayObj.angle || 0}rad)`;
   }
 
+  // Helpers
   function canvasPoint(evt) {
     const r = canvas.getBoundingClientRect();
     return { x: evt.clientX - r.left, y: evt.clientY - r.top };
   }
 
-  // Transform interactions
+  // Transform interactions (Pointer Events for robustness)
   transformBox.addEventListener('pointerdown', (e) => {
-    if (!imageObj || currentTool !== 'transform') return;
+    if (!overlayObj || currentTool !== 'transform') return;
     transformBox.setPointerCapture(e.pointerId);
+
     if (!baseImageData) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
     const t = e.target;
@@ -417,23 +447,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const p = canvasPoint(e);
     startMouse = p;
-    startState = { x: imageObj.x, y: imageObj.y, w: imageObj.w, h: imageObj.h, angle: imageObj.angle || 0 };
+    startState = { x: overlayObj.x, y: overlayObj.y, w: overlayObj.w, h: overlayObj.h, angle: overlayObj.angle || 0 };
+
     e.preventDefault();
   });
 
   transformBox.addEventListener('pointermove', (e) => {
-    if (!imageObj || currentTool !== 'transform' || !transformMode) return;
+    if (!overlayObj || currentTool !== 'transform' || !transformMode) return;
     const p = canvasPoint(e);
     const dx = p.x - startMouse.x;
     const dy = p.y - startMouse.y;
 
     if (transformMode === 'move') {
-      imageObj.x = startState.x + dx;
-      imageObj.y = startState.y + dy;
+      overlayObj.x = startState.x + dx;
+      overlayObj.y = startState.y + dy;
     } else if (transformMode === 'resize') {
       let x = startState.x, y = startState.y, w = startState.w, h = startState.h;
       const aspect = w / h;
       const keepAspect = e.shiftKey;
+
       const applyResize = (left, top, right, bottom) => {
         if (left)  { x = startState.x + dx; w = startState.w - dx; }
         if (right) { w = startState.w + dx; }
@@ -444,24 +476,23 @@ document.addEventListener('DOMContentLoaded', () => {
           const newAspect = w / h;
           if (newAspect > aspect) h = w / aspect; else w = h * aspect;
         }
-        if (left) x = startState.x + (startState.w - w);
-        if (top)  y = startState.y + (startState.h - h);
+        if (left)  x = startState.x + (startState.w - w);
+        if (top)   y = startState.y + (startState.h - h);
       };
-      const map = {
-        'nw': [true, true, false, false], 'n': [false, true, false, false],
-        'ne': [false, true, true, false], 'e': [false, false, true, false],
-        'se': [false, false, true, true], 's': [false, false, false, true],
-        'sw': [true, false, false, true], 'w': [true, false, false, false]
-      };
-      const sides = map[activeHandle] || [false, false, false, false];
+
+      const map = { 'nw':[true,true,false,false], 'n':[false,true,false,false], 'ne':[false,true,true,false],
+                    'e':[false,false,true,false], 'se':[false,false,true,true], 's':[false,false,false,true],
+                    'sw':[true,false,false,true], 'w':[true,false,false,false] };
+      const sides = map[activeHandle] || [false,false,false,false];
       applyResize(...sides);
-      imageObj.x = x; imageObj.y = y; imageObj.w = w; imageObj.h = h;
+
+      overlayObj.x = x; overlayObj.y = y; overlayObj.w = w; overlayObj.h = h;
     } else if (transformMode === 'rotate') {
       const cx = startState.x + startState.w / 2;
       const cy = startState.y + startState.h / 2;
       const angle0 = Math.atan2(startMouse.y - cy, startMouse.x - cx);
       const angle1 = Math.atan2(p.y - cy, p.x - cx);
-      imageObj.angle = startState.angle + (angle1 - angle0);
+      overlayObj.angle = startState.angle + (angle1 - angle0);
     }
 
     updateTransformBox();
@@ -471,67 +502,16 @@ document.addEventListener('DOMContentLoaded', () => {
   transformBox.addEventListener('pointerup', (e) => {
     if (!transformMode) return;
     transformBox.releasePointerCapture(e.pointerId);
-    transformMode = null; activeHandle = null;
+    transformMode = null;
+    activeHandle = null;
   });
 
-  // Commit overlay when leaving transform or on double-click
-  transformBox.addEventListener('dblclick', () => commitOverlay());
-  function commitOverlay() {
-    if (imageObj && baseImageData) {
-      saveState();
-      renderOverlay(); // draw final composite into canvas
-      baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height); // update base
-      imageObj = null; updateTransformBox();
-    }
-  }
-
-  // Crop image (only when angle ~ 0)
-  let isCropping = false, cropStartX = 0, cropStartY = 0, cropRect = null;
-  canvas.addEventListener('mousedown', (e) => {
-    if (currentTool !== 'cropImage') return;
-    if (!imageObj) return;
-    if (Math.abs(imageObj.angle || 0) > 0.0001) {
-      alert('Crop supports only non-rotated images. Please set rotation to 0 first.');
-      return;
-    }
-    const rect = canvas.getBoundingClientRect();
-    cropStartX = e.clientX - rect.left;
-    cropStartY = e.clientY - rect.top;
-    isCropping = true;
-  });
-  canvas.addEventListener('mousemove', (e) => {
-    if (!isCropping || currentTool !== 'cropImage' || !imageObj) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left, y = e.clientY - rect.top;
-    const x1 = Math.min(cropStartX, x), y1 = Math.min(cropStartY, y);
-    const w = Math.abs(x - cropStartX), h = Math.abs(y - cropStartY);
-    cropRect = { x: x1, y: y1, w, h };
-    Object.assign(cropOverlay.style, { left: x1+'px', top: y1+'px', width: w+'px', height: h+'px', display: 'block' });
-  });
-  canvas.addEventListener('mouseup', () => {
-    if (!isCropping || currentTool !== 'cropImage' || !imageObj || !cropRect) return;
-    isCropping = false; cropOverlay.style.display = 'none';
-    const ix1 = Math.max(cropRect.x, imageObj.x);
-    const iy1 = Math.max(cropRect.y, imageObj.y);
-    const ix2 = Math.min(cropRect.x + cropRect.w, imageObj.x + imageObj.w);
-    const iy2 = Math.min(cropRect.y + cropRect.h, imageObj.y + imageObj.h);
-    const iw = Math.max(0, ix2 - ix1), ih = Math.max(0, iy2 - iy1);
-    if (iw <= 0 || ih <= 0) return;
-
-    const off = document.createElement('canvas'); off.width = iw; off.height = ih;
-    const offCtx = off.getContext('2d');
-    const sx = ix1 - imageObj.x, sy = iy1 - imageObj.y;
-    offCtx.drawImage(imageObj.img, sx, sy, iw, ih, 0, 0, iw, ih);
-
-    const croppedImg = new Image();
-    croppedImg.onload = () => {
-      imageObj.img = croppedImg; imageObj.x = ix1; imageObj.y = iy1; imageObj.w = iw; imageObj.h = ih;
-      updateTransformBox(); renderOverlay();
-    };
-    croppedImg.src = off.toDataURL('image/png');
+  // Double-click to commit the transform (flatten to canvas)
+  transformBox.addEventListener('dblclick', () => {
+    commitOverlay();
   });
 
-  // Tool changes
+  // Commit on tool change when leaving transform
   toolSelect.addEventListener('change', () => {
     currentTool = toolSelect.value;
     shapeOptionsDiv.style.display = (currentTool === 'shape') ? 'inline-block' : 'none';
@@ -540,46 +520,115 @@ document.addEventListener('DOMContentLoaded', () => {
       commitOverlay();
     } else {
       if (!baseImageData) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      updateTransformBox(); renderOverlay();
+      updateTransformBox();
+      renderOverlay();
     }
 
-    // Overlays visibility
+    // Show crop overlay only in crop mode
     cropOverlay.style.display = currentTool === 'cropImage' ? 'block' : 'none';
-    if (currentTool !== 'cropImage') { isCropping = false; cropRect = null; cropOverlay.style.display = 'none'; }
-
-    if (currentTool !== 'select') { isSelecting = false; selectRect = null; selectOverlay.style.display = 'none'; }
+    if (currentTool !== 'cropImage') {
+      cropOverlay.style.display = 'none';
+    }
   });
 
-  // Action buttons
+  function commitOverlay() {
+    if (overlayObj && baseImageData) {
+      saveState();
+      // Redraw final composite into canvas
+      renderOverlay();
+      // Update base snapshot to include overlay content
+      baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      // Clear overlay and box
+      overlayObj = null;
+      updateTransformBox();
+    }
+  }
+
+  // CROP IMAGE 
+  let isCropping = false, cropStartX = 0, cropStartY = 0, cropRect = null;
+
+  canvas.addEventListener('mousedown', (e) => {
+    if (currentTool !== 'cropImage') return;
+    if (!overlayObj) return;
+    if (Math.abs(overlayObj.angle || 0) > 0.0001) {
+      alert('Crop supports only non-rotated images/selection. Please set rotation to 0 first.');
+      return;
+    }
+    const rect = canvas.getBoundingClientRect();
+    cropStartX = e.clientX - rect.left;
+    cropStartY = e.clientY - rect.top;
+    isCropping = true;
+  });
+  canvas.addEventListener('mousemove', (e) => {
+    if (!isCropping || currentTool !== 'cropImage' || !overlayObj) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const x1 = Math.min(cropStartX, x);
+    const y1 = Math.min(cropStartY, y);
+    const w = Math.abs(x - cropStartX);
+    const h = Math.abs(y - cropStartY);
+    cropRect = { x: x1, y: y1, w, h };
+    Object.assign(cropOverlay.style, {
+      left: x1 + 'px', top: y1 + 'px', width: w + 'px', height: h + 'px', display: 'block'
+    });
+  });
+  canvas.addEventListener('mouseup', () => {
+    if (!isCropping || currentTool !== 'cropImage' || !overlayObj || !cropRect) return;
+    isCropping = false; cropOverlay.style.display = 'none';
+
+    // Intersection with overlay bounds in canvas coordinates (no rotation)
+    const ix1 = Math.max(cropRect.x, overlayObj.x);
+    const iy1 = Math.max(cropRect.y, overlayObj.y);
+    const ix2 = Math.min(cropRect.x + cropRect.w, overlayObj.x + overlayObj.w);
+    const iy2 = Math.min(cropRect.y + cropRect.h, overlayObj.y + overlayObj.h);
+    const iw = Math.max(0, ix2 - ix1), ih = Math.max(0, iy2 - iy1);
+    if (iw <= 0 || ih <= 0) return;
+
+    const off = document.createElement('canvas'); off.width = iw; off.height = ih;
+    const offCtx = off.getContext('2d');
+    const sx = ix1 - overlayObj.x, sy = iy1 - overlayObj.y;
+    offCtx.drawImage(overlayObj.img, sx, sy, iw, ih, 0, 0, iw, ih);
+
+    const croppedImg = new Image();
+    croppedImg.onload = () => {
+      overlayObj.img = croppedImg; overlayObj.x = ix1; overlayObj.y = iy1; overlayObj.w = iw; overlayObj.h = ih;
+      overlayObj.angle = 0;
+      updateTransformBox(); renderOverlay();
+    };
+    croppedImg.src = off.toDataURL('image/png');
+  });
+
+  // ACTION BUTTONS
   newCanvasButton.addEventListener('click', () => {
     ctx.globalCompositeOperation = 'source-over';
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     undoStack = []; redoStack = [];
-    imageObj = null; baseImageData = null;
-    updateTransformBox();
-    selectOverlay.style.display = 'none'; cropOverlay.style.display = 'none';
+    overlayObj = null; baseImageData = null; selectRect = null;
+    hideSelection(); updateTransformBox();
   });
   clearCanvasButton.addEventListener('click', () => {
     ctx.globalCompositeOperation = 'source-over';
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     undoStack = []; redoStack = [];
-    imageObj = null; baseImageData = null;
-    updateTransformBox();
-    selectOverlay.style.display = 'none'; cropOverlay.style.display = 'none';
+    overlayObj = null; baseImageData = null; selectRect = null;
+    hideSelection(); updateTransformBox();
   });
   undoCanvasButton.addEventListener('click', undo);
   redoCanvasButton.addEventListener('click', redo);
   downloadCanvasButton.addEventListener('click', () => {
-    if (imageObj && baseImageData) renderOverlay(); // flatten view for export
+    if (overlayObj && baseImageData) renderOverlay(); // flatten for export
     const link = document.createElement('a');
     link.download = 'DrawNow_art.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
   });
 
-  // UI sync
+  // UI SYNC
   brushSizeInput.addEventListener('input', () => { brushSizeValue.textContent = brushSizeInput.value; });
   opacityInput.addEventListener('input', () => { opacityValue.textContent = opacityInput.value; });
+
+  // Recent colors
   let recentColors = [];
   function addRecentColor(color) {
     if (!recentColors.includes(color)) {
@@ -592,4 +641,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   brushColorInput.addEventListener('change', () => addRecentColor(brushColorInput.value));
+
+  // Tool changes visibility
+  toolSelect.addEventListener('change', () => {
+    currentTool = toolSelect.value;
+    shapeOptionsDiv.style.display = (currentTool === 'shape') ? 'inline-block' : 'none';
+    if (currentTool !== 'cropImage') cropOverlay.style.display = 'none';
+    if (currentTool !== 'select') hideSelection();
+
+    if (currentTool === 'transform') {
+      if (!baseImageData) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      updateTransformBox();
+      renderOverlay();
+    } else {
+      updateTransformBox(); // hides box if not transforming
+    }
+  });
 });
