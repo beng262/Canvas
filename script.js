@@ -1,16 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // ----- GLOBAL VARIABLES & SETUP -----
+  // ----- CANVAS & STATE -----
   const canvas = document.getElementById('drawingCanvas');
   const ctx = canvas.getContext('2d');
   let isDrawing = false;
   let lastX = 0, lastY = 0;
-  let savedImageData = null;  // For shapes preview
+  let savedImageData = null; // for shape preview
   let currentTool = document.getElementById('tool').value;
   let currentBrush = document.getElementById('brushType').value;
   let undoStack = [];
   let redoStack = [];
+  const MAX_HISTORY = 50;
 
-  // UI ELEMENTS
+  // ----- UI ELEMENTS -----
   const brushSizeInput = document.getElementById('brushSize');
   const brushSizeValue = document.getElementById('brushSizeValue');
   const opacityInput = document.getElementById('opacity');
@@ -31,35 +32,74 @@ document.addEventListener('DOMContentLoaded', () => {
   const symmetryCheckbox = document.getElementById('symmetry');
   const canvasContainer = document.getElementById('canvasContainer');
 
-  // ----- INITIAL DARK MODE SETUP -----
-  // Start in dark mode by default.
-  document.body.classList.add('dark');
-  darkModeToggle.textContent = '🌙';
+  // ----- THEME (matches styles/theme.css) -----
+  const STORAGE_KEY = 'canvas-theme';
+  const root = document.documentElement;
 
-  // ----- HISTORY FUNCTIONS -----
+  function systemTheme() {
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  function applyTheme(theme) {
+    if (theme === 'light' || theme === 'dark') {
+      root.setAttribute('data-theme', theme);
+    } else {
+      root.removeAttribute('data-theme');
+    }
+    const effective = root.getAttribute('data-theme') || systemTheme();
+    darkModeToggle.textContent = effective === 'dark' ? '🌙' : '☀️';
+    darkModeToggle.setAttribute('aria-pressed', String(effective === 'dark'));
+    darkModeToggle.title = effective === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+  }
+
+  function initTheme() {
+    const stored = localStorage.getItem(STORAGE_KEY); // 'light' | 'dark' | null
+    applyTheme(stored);
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    mq.addEventListener('change', () => {
+      if (!localStorage.getItem(STORAGE_KEY)) applyTheme(null);
+    });
+  }
+
+  darkModeToggle.addEventListener('click', () => {
+    const current = root.getAttribute('data-theme') || systemTheme();
+    const next = current === 'dark' ? 'light' : 'dark';
+    localStorage.setItem(STORAGE_KEY, next);
+    applyTheme(next);
+  });
+
+  initTheme();
+
+  // ----- HISTORY -----
   function saveState() {
-    // Clear redo stack when new state is saved.
     redoStack = [];
-    undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
-  }
-  function undo() {
-    if (undoStack.length) {
-      // Save current state to redo stack.
-      redoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
-      let prevState = undoStack.pop();
-      ctx.putImageData(prevState, 0, 0);
-    }
-  }
-  function redo() {
-    if (redoStack.length) {
-      // Save current state to undo stack.
+    try {
       undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
-      let nextState = redoStack.pop();
-      ctx.putImageData(nextState, 0, 0);
+      if (undoStack.length > MAX_HISTORY) undoStack.shift();
+    } catch (e) {
+      // In very large canvases, getImageData may fail due to memory; ignore gracefully.
     }
   }
 
-  // ----- UTILITY FUNCTIONS -----
+  function undo() {
+    if (!undoStack.length) return;
+    try {
+      redoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+      const prev = undoStack.pop();
+      ctx.putImageData(prev, 0, 0);
+    } catch (e) {}
+  }
+
+  function redo() {
+    if (!redoStack.length) return;
+    try {
+      undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+      const next = redoStack.pop();
+      ctx.putImageData(next, 0, 0);
+    } catch (e) {}
+  }
+
+  // ----- COLOR UTILS -----
   function hexToRgba(hex, opacity) {
     hex = hex.replace('#', '');
     if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
@@ -97,7 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
     data[index + 3] = color[3];
   }
 
-  // ----- REVISED FLOOD FILL ALGORITHM -----
+  // ----- FLOOD FILL -----
   function floodFill(startX, startY, fillColor) {
     const width = canvas.width;
     const height = canvas.height;
@@ -153,12 +193,11 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.putImageData(imageData, 0, 0);
   }
 
-  // ----- STAR & IMPROVED HEART SHAPE FUNCTIONS -----
+  // ----- SHAPES -----
   function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
     let rot = (Math.PI / 2) * 3;
-    let x = cx;
-    let y = cy;
-    let step = Math.PI / spikes;
+    let x = cx, y = cy;
+    const step = Math.PI / spikes;
 
     ctx.beginPath();
     ctx.moveTo(cx, cy - outerRadius);
@@ -178,7 +217,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function drawHeart(cx, cy, size) {
-    // Improved heart drawing using a parametric approach.
     ctx.save();
     ctx.beginPath();
     ctx.translate(cx, cy);
@@ -192,59 +230,18 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.restore();
   }
 
-  // ----- DARK MODE TOGGLE HANDLER -----
-  darkModeToggle.addEventListener('click', () => {
-    document.body.classList.toggle('dark');
-    if (document.body.classList.contains('dark')) {
-      darkModeToggle.textContent = '🌙';
-    } else {
-      darkModeToggle.textContent = '☀️';
-    }
-  });
-
-  // ----- EVENT LISTENERS & HANDLERS -----
-  // Update brush size & opacity display
-  brushSizeInput.addEventListener('input', () => {
-    brushSizeValue.textContent = brushSizeInput.value;
-  });
-  opacityInput.addEventListener('input', () => {
-    opacityValue.textContent = opacityInput.value;
-  });
-
-  // Recent Colors Palette
-  let recentColors = [];
-  function addRecentColor(color) {
-    if (!recentColors.includes(color)) {
-      recentColors.push(color);
-      let swatch = document.createElement('div');
-      swatch.className = 'color-swatch';
-      swatch.style.backgroundColor = color;
-      swatch.onclick = () => {
-        brushColorInput.value = color;
-      };
-      recentColorsDiv.appendChild(swatch);
-    }
+  // ----- THEME-AWARE CANVAS CLEAR (optional utility) -----
+  function clearCanvasToThemeBg() {
+    // If you want the canvas to show theme background instead of transparent:
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim() || '#ffffff';
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
   }
-  brushColorInput.addEventListener('change', () => {
-    addRecentColor(brushColorInput.value);
-  });
 
-  // Show shape options only if 'shape' tool is selected
-  toolSelect.addEventListener('change', () => {
-    currentTool = toolSelect.value;
-    shapeOptionsDiv.style.display = (currentTool === 'shape') ? 'inline-block' : 'none';
-  });
-  // Update brush type
-  brushTypeSelect.addEventListener('change', () => {
-    currentBrush = brushTypeSelect.value;
-  });
-  // Update canvas background
-  backgroundPatternSelect.addEventListener('change', () => {
-    const pattern = backgroundPatternSelect.value;
-    canvasContainer.className = 'canvas-container ' + pattern;
-  });
-
-  // ----- BRUSH FUNCTIONS (20+ types) -----
+  // ----- DRAWING -----
   const brushFunctions = {
     round(e, x, y, size, color, opacity) {
       ctx.strokeStyle = hexToRgba(color, opacity);
@@ -266,8 +263,8 @@ document.addEventListener('DOMContentLoaded', () => {
     spray(e, x, y, size, color, opacity) {
       ctx.fillStyle = hexToRgba(color, opacity);
       for (let i = 0; i < 30; i++) {
-        let offsetX = (Math.random() - 0.5) * size * 2;
-        let offsetY = (Math.random() - 0.5) * size * 2;
+        const offsetX = (Math.random() - 0.5) * size * 2;
+        const offsetY = (Math.random() - 0.5) * size * 2;
         ctx.fillRect(x + offsetX, y + offsetY, 1, 1);
       }
     },
@@ -281,16 +278,10 @@ document.addEventListener('DOMContentLoaded', () => {
     splatter(e, x, y, size, color, opacity) {
       ctx.fillStyle = hexToRgba(color, opacity);
       for (let i = 0; i < 20; i++) {
-        let angle = Math.random() * Math.PI * 2;
-        let radius = Math.random() * size;
+        const angle = Math.random() * Math.PI * 2;
+        const radius = Math.random() * size;
         ctx.beginPath();
-        ctx.arc(
-          x + Math.cos(angle) * radius,
-          y + Math.sin(angle) * radius,
-          size / 10,
-          0,
-          Math.PI * 2
-        );
+        ctx.arc(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius, size / 10, 0, Math.PI * 2);
         ctx.fill();
       }
     },
@@ -365,8 +356,8 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     airbrush(e, x, y, size, color, opacity) {
       for (let i = 0; i < 20; i++) {
-        let offsetX = (Math.random() - 0.5) * size;
-        let offsetY = (Math.random() - 0.5) * size;
+        const offsetX = (Math.random() - 0.5) * size;
+        const offsetY = (Math.random() - 0.5) * size;
         ctx.fillStyle = hexToRgba(color, opacity * Math.random());
         ctx.fillRect(x + offsetX, y + offsetY, 1, 1);
       }
@@ -411,30 +402,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // ----- DRAWING HANDLERS -----
-  // General drawing (only if not using shape or fill tool)
+  // Drawing start
   canvas.addEventListener('mousedown', (e) => {
     if (currentTool === 'shape' || currentTool === 'fill') return;
     const rect = canvas.getBoundingClientRect();
     lastX = e.clientX - rect.left;
     lastY = e.clientY - rect.top;
-    saveState(); // Save before drawing
+    saveState(); // snapshot before modification
     isDrawing = true;
     ctx.beginPath();
     ctx.moveTo(lastX, lastY);
   });
+
+  // Drawing move
   canvas.addEventListener('mousemove', (e) => {
     if (!isDrawing || currentTool === 'fill' || currentTool === 'shape') return;
     const rect = canvas.getBoundingClientRect();
-    let currentX = e.clientX - rect.left;
-    let currentY = e.clientY - rect.top;
-    const size = parseInt(brushSizeInput.value);
+    const currentX = e.clientX - rect.left;
+    const currentY = e.clientY - rect.top;
+    const size = parseInt(brushSizeInput.value, 10);
     const opacity = parseFloat(opacityInput.value);
     const color = brushColorInput.value;
 
-    ctx.globalCompositeOperation = (currentTool === 'eraser')
-      ? 'destination-out'
-      : 'source-over';
+    ctx.globalCompositeOperation = (currentTool === 'eraser') ? 'destination-out' : 'source-over';
 
     if (symmetryCheckbox.checked) {
       ctx.beginPath();
@@ -451,40 +441,35 @@ document.addEventListener('DOMContentLoaded', () => {
     lastX = currentX;
     lastY = currentY;
   });
-  canvas.addEventListener('mouseup', (e) => {
-    if (isDrawing) {
-      isDrawing = false;
-      saveState();
-    }
+
+  // Drawing end
+  canvas.addEventListener('mouseup', () => {
+    isDrawing = false;
   });
-  canvas.addEventListener('mouseout', (e) => {
-    if (isDrawing) {
-      isDrawing = false;
-      saveState();
-    }
+  canvas.addEventListener('mouseout', () => {
+    isDrawing = false;
   });
 
-  // ----- FILL TOOL HANDLER (Flood Fill) -----
+  // ----- FILL TOOL -----
   canvas.addEventListener('mousedown', (e) => {
-    if (currentTool === 'fill') {
-      const rect = canvas.getBoundingClientRect();
-      const x = Math.floor(e.clientX - rect.left);
-      const y = Math.floor(e.clientY - rect.top);
-      saveState();
-      floodFill(x, y, brushColorInput.value);
-    }
+    if (currentTool !== 'fill') return;
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.floor(e.clientX - rect.left);
+    const y = Math.floor(e.clientY - rect.top);
+    saveState();
+    floodFill(x, y, brushColorInput.value);
   });
 
-  // ----- SHAPES TOOL HANDLERS -----
+  // ----- SHAPES TOOL -----
   let shapeActive = false;
   canvas.addEventListener('mousedown', (e) => {
-    if (currentTool === 'shape') {
-      const rect = canvas.getBoundingClientRect();
-      lastX = e.clientX - rect.left;
-      lastY = e.clientY - rect.top;
-      savedImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      shapeActive = true;
-    }
+    if (currentTool !== 'shape') return;
+    const rect = canvas.getBoundingClientRect();
+    lastX = e.clientX - rect.left;
+    lastY = e.clientY - rect.top;
+    savedImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    saveState(); // snapshot before shape commit
+    shapeActive = true;
   });
   canvas.addEventListener('mousemove', (e) => {
     if (!shapeActive || currentTool !== 'shape') return;
@@ -493,11 +478,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const currY = e.clientY - rect.top;
     ctx.putImageData(savedImageData, 0, 0);
     ctx.strokeStyle = hexToRgba(brushColorInput.value, opacityInput.value);
-    ctx.lineWidth = parseInt(brushSizeInput.value);
+    ctx.lineWidth = parseInt(brushSizeInput.value, 10);
 
-    let shape = shapeTypeSelect.value;
-    let w = currX - lastX;
-    let h = currY - lastY;
+    const shape = shapeTypeSelect.value;
+    const w = currX - lastX;
+    const h = currY - lastY;
+
     if (shape === 'line' || shape === 'dottedLine') {
       ctx.beginPath();
       ctx.moveTo(lastX, lastY);
@@ -510,7 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.strokeRect(lastX, lastY, w, h);
       ctx.setLineDash([]);
     } else if (shape === 'circle') {
-      let radius = Math.sqrt(w * w + h * h);
+      const radius = Math.sqrt(w * w + h * h);
       ctx.beginPath();
       ctx.arc(lastX, lastY, radius, 0, Math.PI * 2);
       ctx.stroke();
@@ -519,7 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.ellipse(lastX + w / 2, lastY + h / 2, Math.abs(w / 2), Math.abs(h / 2), 0, 0, Math.PI * 2);
       ctx.stroke();
     } else if (shape === 'star') {
-      let r = Math.max(Math.abs(w), Math.abs(h));
+      const r = Math.max(Math.abs(w), Math.abs(h));
       drawStar(lastX, lastY, 5, r, r / 2);
     } else if (shape === 'heart') {
       drawHeart(lastX, lastY, Math.max(Math.abs(w), Math.abs(h)));
@@ -528,7 +514,6 @@ document.addEventListener('DOMContentLoaded', () => {
   canvas.addEventListener('mouseup', (e) => {
     if (currentTool === 'shape' && shapeActive) {
       shapeActive = false;
-      saveState();
     }
   });
 
@@ -545,39 +530,82 @@ document.addEventListener('DOMContentLoaded', () => {
     undoStack = [];
     redoStack = [];
   });
-  undoCanvasButton.addEventListener('click', () => {
-    undo();
-  });
-  redoCanvasButton.addEventListener('click', () => {
-    redo();
-  });
+  undoCanvasButton.addEventListener('click', undo);
+  redoCanvasButton.addEventListener('click', redo);
+
   downloadCanvasButton.addEventListener('click', () => {
-    let link = document.createElement('a');
+    const link = document.createElement('a');
     link.download = 'DrawNow_art.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
   });
 
+  // ----- UI SYNC -----
+  brushSizeInput.addEventListener('input', () => {
+    brushSizeValue.textContent = brushSizeInput.value;
+  });
+  opacityInput.addEventListener('input', () => {
+    opacityValue.textContent = opacityInput.value;
+  });
+
+  let recentColors = [];
+  function addRecentColor(color) {
+    if (!recentColors.includes(color)) {
+      recentColors.push(color);
+      const swatch = document.createElement('div');
+      swatch.className = 'color-swatch';
+      swatch.style.backgroundColor = color;
+      swatch.onclick = () => {
+        brushColorInput.value = color;
+      };
+      recentColorsDiv.appendChild(swatch);
+    }
+  }
+  brushColorInput.addEventListener('change', () => {
+    addRecentColor(brushColorInput.value);
+  });
+
+  toolSelect.addEventListener('change', () => {
+    currentTool = toolSelect.value;
+    shapeOptionsDiv.style.display = (currentTool === 'shape') ? 'inline-block' : 'none';
+  });
+  brushTypeSelect.addEventListener('change', () => {
+    currentBrush = brushTypeSelect.value;
+  });
+  backgroundPatternSelect.addEventListener('change', () => {
+    const pattern = backgroundPatternSelect.value;
+    canvasContainer.className = 'canvas-container ' + pattern;
+  });
+
   // ----- KEYBOARD SHORTCUTS -----
   document.addEventListener('keydown', (e) => {
     const key = e.key.toLowerCase();
-    if (key === 'p') {
-      toolSelect.value = 'pen';
-      currentTool = 'pen';
-    } else if (key === 'e') {
-      toolSelect.value = 'eraser';
-      currentTool = 'eraser';
-    } else if (key === 'f') {
-      toolSelect.value = 'fill';
-      currentTool = 'fill';
-    } else if (key === 's') {
-      toolSelect.value = 'shape';
-      currentTool = 'shape';
-    } else if (key === 'y') {
-      symmetryCheckbox.checked = !symmetryCheckbox.checked;
-    } else if (key === 'z') {
+    const ctrl = e.ctrlKey || e.metaKey;
+
+    if (!ctrl) {
+      if (key === 'p') {
+        toolSelect.value = 'pen';
+        currentTool = 'pen';
+      } else if (key === 'e') {
+        toolSelect.value = 'eraser';
+        currentTool = 'eraser';
+      } else if (key === 'f') {
+        toolSelect.value = 'fill';
+        currentTool = 'fill';
+      } else if (key === 's') {
+        toolSelect.value = 'shape';
+        currentTool = 'shape';
+      } else if (key === 'y') {
+        symmetryCheckbox.checked = !symmetryCheckbox.checked;
+      }
+      return;
+    }
+
+    if (ctrl && key === 'z' && !e.shiftKey) {
+      e.preventDefault();
       undo();
-    } else if (e.shiftKey && key === 'z') {
+    } else if (ctrl && (key === 'y' || (key === 'z' && e.shiftKey))) {
+      e.preventDefault();
       redo();
     }
   });
