@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>DrawNow!</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -24,13 +25,15 @@
       <input type="range" id="opacity" min="0" max="100" value="100">
       <span id="opacityValue">100</span>
     </div>
+
     <!-- Color picker & recent colors -->
     <div class="toolbar-item">
       <label for="brushColor">Color:</label>
       <input type="color" id="brushColor" value="#000000">
       <div id="recentColors"></div>
     </div>
-    <!-- Tool selector  -->
+
+    <!-- Tool selector -->
     <div class="toolbar-item">
       <label for="tool">Tool:</label>
       <select id="tool">
@@ -38,8 +41,11 @@
         <option value="eraser">Eraser</option>
         <option value="fill">Fill</option>
         <option value="shape">Shapes</option>
+        <option value="moveImage">Move Image</option>
+        <option value="cropImage">Crop Image</option>
       </select>
     </div>
+
     <!-- Brush types – 20 unique brushes -->
     <div class="toolbar-item">
       <label for="brushType">Brush Type:</label>
@@ -66,6 +72,7 @@
         <option value="crayon">Crayon</option>
       </select>
     </div>
+
     <!-- Shape options (shown only when tool is "shape") -->
     <div class="toolbar-item" id="shapeOptions" style="display:none;">
       <label for="shapeType">Shape:</label>
@@ -81,11 +88,13 @@
         <option value="heart">Heart</option>
       </select>
     </div>
+
     <!-- Canvas Background Options -->
     <div class="toolbar-item">
       <label for="backgroundPattern">Canvas Background:</label>
       <select id="backgroundPattern">
-        <option value="plain">Plain</option>
+        <option value="plain">Plain (White)</option>
+        <option value="dark">Dark (Black)</option>
         <option value="notebook">Notebook</option>
         <option value="pastel">Pastel Pattern</option>
         <option value="fabric">Fabric</option>
@@ -96,6 +105,7 @@
         <option value="marble">Marble</option>
       </select>
     </div>
+
     <!-- Action Buttons -->
     <div class="toolbar-item">
       <button id="newCanvas">New Canvas</button>
@@ -104,7 +114,10 @@
       <button id="redoCanvas">⟳ Redo</button>
       <button id="downloadCanvas">Download</button>
       <button id="darkModeToggle">☀</button>
+      <button id="addImageButton">Add Image</button>
+      <input type="file" id="addImageInput" accept="image/*" style="display:none;">
     </div>
+
     <!-- Symmetry mode (toggle with shortcut Y) -->
     <div class="toolbar-item">
       <label>
@@ -117,6 +130,7 @@
   <!-- Drawing Canvas Container -->
   <div class="canvas-container plain" id="canvasContainer">
     <canvas id="drawingCanvas" width="800" height="600"></canvas>
+    <div id="cropOverlay" class="crop-overlay" style="display:none;"></div>
   </div>
 
   <script src="script.js"></script>
