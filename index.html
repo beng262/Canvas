@@ -7,14 +7,11 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <!-- Header -->
   <header>
     <h1>DrawNow!</h1>
   </header>
 
-  <!-- Toolbar -->
   <div class="toolbar">
-    <!-- Brush size & opacity -->
     <div class="toolbar-item">
       <label for="brushSize">Brush Size:</label>
       <input type="range" id="brushSize" min="1" max="50" value="10">
@@ -25,15 +22,12 @@
       <input type="range" id="opacity" min="0" max="100" value="100">
       <span id="opacityValue">100</span>
     </div>
-
-    <!-- Color picker & recent colors -->
     <div class="toolbar-item">
       <label for="brushColor">Color:</label>
       <input type="color" id="brushColor" value="#000000">
       <div id="recentColors"></div>
     </div>
 
-    <!-- Tool selector -->
     <div class="toolbar-item">
       <label for="tool">Tool:</label>
       <select id="tool">
@@ -41,39 +35,12 @@
         <option value="eraser">Eraser</option>
         <option value="fill">Fill</option>
         <option value="shape">Shapes</option>
+        <option value="select">Selection</option>
         <option value="transform">Transform Image</option>
         <option value="cropImage">Crop Image</option>
       </select>
     </div>
 
-    <!-- Brush types – 20 unique brushes -->
-    <div class="toolbar-item">
-      <label for="brushType">Brush Type:</label>
-      <select id="brushType">
-        <option value="round">Round</option>
-        <option value="square">Square</option>
-        <option value="dotted">Dotted</option>
-        <option value="spray">Spray</option>
-        <option value="calligraphy">Calligraphy</option>
-        <option value="splatter">Splatter</option>
-        <option value="watercolor">Watercolor</option>
-        <option value="chalk">Chalk</option>
-        <option value="oil">Oil</option>
-        <option value="pencil">Pencil</option>
-        <option value="neon">Neon</option>
-        <option value="glitter">Glitter</option>
-        <option value="textured">Textured</option>
-        <option value="pattern">Pattern</option>
-        <option value="airbrush">Airbrush</option>
-        <option value="star">Star</option>
-        <option value="heart">Heart</option>
-        <option value="zigzag">Zigzag</option>
-        <option value="scatter">Scatter</option>
-        <option value="crayon">Crayon</option>
-      </select>
-    </div>
-
-    <!-- Shape options -->
     <div class="toolbar-item" id="shapeOptions" style="display:none;">
       <label for="shapeType">Shape:</label>
       <select id="shapeType">
@@ -89,7 +56,6 @@
       </select>
     </div>
 
-    <!-- Canvas Background Options -->
     <div class="toolbar-item">
       <label for="backgroundPattern">Canvas Background:</label>
       <select id="backgroundPattern">
@@ -106,19 +72,17 @@
       </select>
     </div>
 
-    <!-- Action Buttons -->
     <div class="toolbar-item">
       <button id="newCanvas">New Canvas</button>
       <button id="clearCanvas">Clear Canvas</button>
       <button id="undoCanvas">⟲ Undo</button>
       <button id="redoCanvas">⟳ Redo</button>
       <button id="downloadCanvas">Download</button>
-      <button id="darkModeToggle">☀️</button>
+      <button id="darkModeToggle" aria-pressed="false" title="Switch to dark mode">☀️</button>
       <button id="addImageButton">Add Image</button>
       <input type="file" id="addImageInput" accept="image/*" style="display:none;">
     </div>
 
-    <!-- Symmetry mode -->
     <div class="toolbar-item">
       <label>
         <input type="checkbox" id="symmetry">
@@ -127,12 +91,11 @@
     </div>
   </div>
 
-  <!-- Drawing Canvas Container -->
   <div class="canvas-container plain" id="canvasContainer">
     <canvas id="drawingCanvas" width="800" height="600"></canvas>
 
     <!-- Transform box overlay -->
-    <div id="transformBox" class="transform-box" style="display:none;">
+    <div id="transformBox" class="transform-box" style="display:none;" role="group" aria-label="Image transform handles">
       <div class="handle handle-nw" data-handle="nw"></div>
       <div class="handle handle-n"  data-handle="n"></div>
       <div class="handle handle-ne" data-handle="ne"></div>
@@ -146,6 +109,9 @@
 
     <!-- Crop overlay -->
     <div id="cropOverlay" class="crop-overlay" style="display:none;"></div>
+
+    <!-- Selection marquee -->
+    <div id="selectOverlay" class="select-overlay" style="display:none;"></div>
   </div>
 
   <script src="script.js"></script>
