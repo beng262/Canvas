@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const ctx = canvas.getContext('2d');
   let isDrawing = false;
   let lastX = 0, lastY = 0;
-  let savedImageData = null; // for shape preview
+  let savedImageData = null;
   let currentTool = document.getElementById('tool').value;
   let currentBrush = document.getElementById('brushType').value;
   let undoStack = [];
@@ -32,42 +32,29 @@ document.addEventListener('DOMContentLoaded', () => {
   const symmetryCheckbox = document.getElementById('symmetry');
   const canvasContainer = document.getElementById('canvasContainer');
 
-  // ----- THEME (matches styles/theme.css) -----
-  const STORAGE_KEY = 'canvas-theme';
-  const root = document.documentElement;
-
-  function systemTheme() {
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-
-  function applyTheme(theme) {
-    if (theme === 'light' || theme === 'dark') {
-      root.setAttribute('data-theme', theme);
-    } else {
-      root.removeAttribute('data-theme');
+  // ----- THEME (body.dark + localStorage) -----
+  const THEME_KEY = 'drawnow-theme';
+  function applyTheme(mode) {
+    const isDark = mode === 'dark';
+    document.body.classList.toggle('dark', isDark);
+    if (darkModeToggle) {
+      darkModeToggle.textContent = isDark ? '🌙' : '☀';
+      darkModeToggle.setAttribute('aria-pressed', String(isDark));
+      darkModeToggle.title = isDark ? 'Switch to light mode' : 'Switch to dark mode';
     }
-    const effective = root.getAttribute('data-theme') || systemTheme();
-    darkModeToggle.textContent = effective === 'dark' ? '🌙' : '☀️';
-    darkModeToggle.setAttribute('aria-pressed', String(effective === 'dark'));
-    darkModeToggle.title = effective === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
   }
-
   function initTheme() {
-    const stored = localStorage.getItem(STORAGE_KEY); // 'light' | 'dark' | null
-    applyTheme(stored);
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    mq.addEventListener('change', () => {
-      if (!localStorage.getItem(STORAGE_KEY)) applyTheme(null);
+    const stored = localStorage.getItem(THEME_KEY);
+    applyTheme(stored === 'dark' ? 'dark' : 'light');
+  }
+  if (darkModeToggle) {
+    darkModeToggle.addEventListener('click', () => {
+      const isDark = document.body.classList.contains('dark');
+      const next = isDark ? 'light' : 'dark';
+      localStorage.setItem(THEME_KEY, next);
+      applyTheme(next);
     });
   }
-
-  darkModeToggle.addEventListener('click', () => {
-    const current = root.getAttribute('data-theme') || systemTheme();
-    const next = current === 'dark' ? 'light' : 'dark';
-    localStorage.setItem(STORAGE_KEY, next);
-    applyTheme(next);
-  });
-
   initTheme();
 
   // ----- HISTORY -----
@@ -76,11 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
       if (undoStack.length > MAX_HISTORY) undoStack.shift();
-    } catch (e) {
-      // In very large canvases, getImageData may fail due to memory; ignore gracefully.
-    }
+    } catch (e) {}
   }
-
   function undo() {
     if (!undoStack.length) return;
     try {
@@ -89,7 +73,6 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.putImageData(prev, 0, 0);
     } catch (e) {}
   }
-
   function redo() {
     if (!redoStack.length) return;
     try {
@@ -230,18 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.restore();
   }
 
-  // ----- THEME-AWARE CANVAS CLEAR (optional utility) -----
-  function clearCanvasToThemeBg() {
-    // If you want the canvas to show theme background instead of transparent:
-    const bg = getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim() || '#ffffff';
-    ctx.save();
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.restore();
-  }
-
-  // ----- DRAWING -----
+  // ----- BRUSHES -----
   const brushFunctions = {
     round(e, x, y, size, color, opacity) {
       ctx.strokeStyle = hexToRgba(color, opacity);
@@ -402,19 +374,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Drawing start
+  // ----- DRAWING (save once before change) -----
   canvas.addEventListener('mousedown', (e) => {
     if (currentTool === 'shape' || currentTool === 'fill') return;
     const rect = canvas.getBoundingClientRect();
     lastX = e.clientX - rect.left;
     lastY = e.clientY - rect.top;
-    saveState(); // snapshot before modification
+    saveState();
     isDrawing = true;
     ctx.beginPath();
     ctx.moveTo(lastX, lastY);
   });
 
-  // Drawing move
   canvas.addEventListener('mousemove', (e) => {
     if (!isDrawing || currentTool === 'fill' || currentTool === 'shape') return;
     const rect = canvas.getBoundingClientRect();
@@ -442,15 +413,10 @@ document.addEventListener('DOMContentLoaded', () => {
     lastY = currentY;
   });
 
-  // Drawing end
-  canvas.addEventListener('mouseup', () => {
-    isDrawing = false;
-  });
-  canvas.addEventListener('mouseout', () => {
-    isDrawing = false;
-  });
+  canvas.addEventListener('mouseup', () => { isDrawing = false; });
+  canvas.addEventListener('mouseout', () => { isDrawing = false; });
 
-  // ----- FILL TOOL -----
+  // ----- FILL TOOL (save before fill) -----
   canvas.addEventListener('mousedown', (e) => {
     if (currentTool !== 'fill') return;
     const rect = canvas.getBoundingClientRect();
@@ -460,7 +426,7 @@ document.addEventListener('DOMContentLoaded', () => {
     floodFill(x, y, brushColorInput.value);
   });
 
-  // ----- SHAPES TOOL -----
+  // ----- SHAPE TOOL (save before preview) -----
   let shapeActive = false;
   canvas.addEventListener('mousedown', (e) => {
     if (currentTool !== 'shape') return;
@@ -468,7 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
     lastX = e.clientX - rect.left;
     lastY = e.clientY - rect.top;
     savedImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    saveState(); // snapshot before shape commit
+    saveState();
     shapeActive = true;
   });
   canvas.addEventListener('mousemove', (e) => {
@@ -511,7 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
       drawHeart(lastX, lastY, Math.max(Math.abs(w), Math.abs(h)));
     }
   });
-  canvas.addEventListener('mouseup', (e) => {
+  canvas.addEventListener('mouseup', () => {
     if (currentTool === 'shape' && shapeActive) {
       shapeActive = false;
     }
@@ -532,7 +498,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   undoCanvasButton.addEventListener('click', undo);
   redoCanvasButton.addEventListener('click', redo);
-
   downloadCanvasButton.addEventListener('click', () => {
     const link = document.createElement('a');
     link.download = 'DrawNow_art.png';
@@ -555,9 +520,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const swatch = document.createElement('div');
       swatch.className = 'color-swatch';
       swatch.style.backgroundColor = color;
-      swatch.onclick = () => {
-        brushColorInput.value = color;
-      };
+      swatch.onclick = () => { brushColorInput.value = color; };
       recentColorsDiv.appendChild(swatch);
     }
   }
@@ -577,35 +540,22 @@ document.addEventListener('DOMContentLoaded', () => {
     canvasContainer.className = 'canvas-container ' + pattern;
   });
 
-  // ----- KEYBOARD SHORTCUTS -----
+  // ----- SHORTCUTS -----
   document.addEventListener('keydown', (e) => {
     const key = e.key.toLowerCase();
-    const ctrl = e.ctrlKey || e.metaKey;
-
-    if (!ctrl) {
-      if (key === 'p') {
-        toolSelect.value = 'pen';
-        currentTool = 'pen';
-      } else if (key === 'e') {
-        toolSelect.value = 'eraser';
-        currentTool = 'eraser';
-      } else if (key === 'f') {
-        toolSelect.value = 'fill';
-        currentTool = 'fill';
-      } else if (key === 's') {
-        toolSelect.value = 'shape';
-        currentTool = 'shape';
-      } else if (key === 'y') {
-        symmetryCheckbox.checked = !symmetryCheckbox.checked;
-      }
-      return;
-    }
-
-    if (ctrl && key === 'z' && !e.shiftKey) {
-      e.preventDefault();
+    if (key === 'p') {
+      toolSelect.value = 'pen'; currentTool = 'pen';
+    } else if (key === 'e') {
+      toolSelect.value = 'eraser'; currentTool = 'eraser';
+    } else if (key === 'f') {
+      toolSelect.value = 'fill'; currentTool = 'fill';
+    } else if (key === 's') {
+      toolSelect.value = 'shape'; currentTool = 'shape';
+    } else if (key === 'y') {
+      symmetryCheckbox.checked = !symmetryCheckbox.checked;
+    } else if (key === 'z') {
       undo();
-    } else if (ctrl && (key === 'y' || (key === 'z' && e.shiftKey))) {
-      e.preventDefault();
+    } else if (e.shiftKey && key === 'z') {
       redo();
     }
   });
