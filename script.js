@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // ----- CANVAS & STATE -----
+  // Canvas & state
   const canvas = document.getElementById('drawingCanvas');
   const ctx = canvas.getContext('2d');
   let isDrawing = false;
@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let redoStack = [];
   const MAX_HISTORY = 50;
 
-  // ----- UI ELEMENTS -----
+  // UI elements
   const brushSizeInput = document.getElementById('brushSize');
   const brushSizeValue = document.getElementById('brushSizeValue');
   const opacityInput = document.getElementById('opacity');
@@ -32,53 +32,43 @@ document.addEventListener('DOMContentLoaded', () => {
   const symmetryCheckbox = document.getElementById('symmetry');
   const canvasContainer = document.getElementById('canvasContainer');
 
-// ----- THEME (body.dark + localStorage + system fallback) -----
-const THEME_KEY = 'drawnow-theme';
+  // Image insertion & transform state
+  const addImageButton = document.getElementById('addImageButton');
+  const addImageInput = document.getElementById('addImageInput');
+  const cropOverlay = document.getElementById('cropOverlay');
+  let imageObj = null; // { img: HTMLImageElement, x, y, w, h }
+  let isMovingImage = false;
+  let moveOffsetX = 0, moveOffsetY = 0;
+  let isCropping = false;
+  let cropStartX = 0, cropStartY = 0;
+  let cropRect = null; // { x, y, w, h }
 
-function getSystemTheme() {
-  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-    ? 'dark'
-    : 'light';
-}
-
-function applyTheme(mode) {
-  const isDark = mode === 'dark';
-  document.body.classList.toggle('dark', isDark);
-  if (darkModeToggle) {
-    darkModeToggle.textContent = isDark ? '🌙' : '☀';
-    darkModeToggle.setAttribute('aria-pressed', String(isDark));
-    darkModeToggle.title = isDark ? 'Switch to light mode' : 'Switch to dark mode';
-  }
-}
-
-function initTheme() {
-  let stored = localStorage.getItem(THEME_KEY); // 'dark' | 'light' | null
-  if (stored !== 'dark' && stored !== 'light') {
-    stored = getSystemTheme(); // default to system preference on first load
-  }
-  applyTheme(stored);
-
-  // React to system changes ONLY if user hasn’t explicitly chosen
-  const mq = window.matchMedia('(prefers-color-scheme: dark)');
-  mq.addEventListener('change', () => {
-    const current = localStorage.getItem(THEME_KEY);
-    if (current !== 'dark' && current !== 'light') {
-      applyTheme(getSystemTheme());
+  // THEME (body.dark + localStorage)
+  const THEME_KEY = 'drawnow-theme';
+  function applyTheme(mode) {
+    const isDark = mode === 'dark';
+    document.body.classList.toggle('dark', isDark);
+    if (darkModeToggle) {
+      darkModeToggle.textContent = isDark ? '🌙' : '☀';
+      darkModeToggle.setAttribute('aria-pressed', String(isDark));
+      darkModeToggle.title = isDark ? 'Switch to light mode' : 'Switch to dark mode';
     }
-  });
-}
+  }
+  function initTheme() {
+    const stored = localStorage.getItem(THEME_KEY);
+    applyTheme(stored === 'dark' ? 'dark' : 'light');
+  }
+  if (darkModeToggle) {
+    darkModeToggle.addEventListener('click', () => {
+      const isDark = document.body.classList.contains('dark');
+      const next = isDark ? 'light' : 'dark';
+      localStorage.setItem(THEME_KEY, next);
+      applyTheme(next);
+    });
+  }
+  initTheme();
 
-if (darkModeToggle) {
-  darkModeToggle.addEventListener('click', () => {
-    const isDark = document.body.classList.contains('dark');
-    const next = isDark ? 'light' : 'dark';
-    localStorage.setItem(THEME_KEY, next);
-    applyTheme(next);
-  });
-}
-initTheme();
-
-  // ----- HISTORY -----
+  // HISTORY (save once before change)
   function saveState() {
     redoStack = [];
     try {
@@ -92,6 +82,7 @@ initTheme();
       redoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
       const prev = undoStack.pop();
       ctx.putImageData(prev, 0, 0);
+      redrawImageLayer();
     } catch (e) {}
   }
   function redo() {
@@ -100,10 +91,11 @@ initTheme();
       undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
       const next = redoStack.pop();
       ctx.putImageData(next, 0, 0);
+      redrawImageLayer();
     } catch (e) {}
   }
 
-  // ----- COLOR UTILS -----
+  // COLOR UTILS
   function hexToRgba(hex, opacity) {
     hex = hex.replace('#', '');
     if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
@@ -141,7 +133,7 @@ initTheme();
     data[index + 3] = color[3];
   }
 
-  // ----- FLOOD FILL -----
+  // FLOOD FILL
   function floodFill(startX, startY, fillColor) {
     const width = canvas.width;
     const height = canvas.height;
@@ -197,7 +189,7 @@ initTheme();
     ctx.putImageData(imageData, 0, 0);
   }
 
-  // ----- SHAPES -----
+  // SHAPES
   function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
     let rot = (Math.PI / 2) * 3;
     let x = cx, y = cy;
@@ -234,7 +226,7 @@ initTheme();
     ctx.restore();
   }
 
-  // ----- BRUSHES -----
+  // BRUSHES
   const brushFunctions = {
     round(e, x, y, size, color, opacity) {
       ctx.strokeStyle = hexToRgba(color, opacity);
@@ -395,9 +387,9 @@ initTheme();
     }
   };
 
-  // ----- DRAWING (save once before change) -----
+  // DRAWING (save once before change)
   canvas.addEventListener('mousedown', (e) => {
-    if (currentTool === 'shape' || currentTool === 'fill') return;
+    if (currentTool === 'shape' || currentTool === 'fill' || currentTool === 'moveImage' || currentTool === 'cropImage') return;
     const rect = canvas.getBoundingClientRect();
     lastX = e.clientX - rect.left;
     lastY = e.clientY - rect.top;
@@ -408,7 +400,7 @@ initTheme();
   });
 
   canvas.addEventListener('mousemove', (e) => {
-    if (!isDrawing || currentTool === 'fill' || currentTool === 'shape') return;
+    if (!isDrawing || currentTool === 'fill' || currentTool === 'shape' || currentTool === 'moveImage' || currentTool === 'cropImage') return;
     const rect = canvas.getBoundingClientRect();
     const currentX = e.clientX - rect.left;
     const currentY = e.clientY - rect.top;
@@ -437,7 +429,7 @@ initTheme();
   canvas.addEventListener('mouseup', () => { isDrawing = false; });
   canvas.addEventListener('mouseout', () => { isDrawing = false; });
 
-  // ----- FILL TOOL (save before fill) -----
+  // FILL TOOL
   canvas.addEventListener('mousedown', (e) => {
     if (currentTool !== 'fill') return;
     const rect = canvas.getBoundingClientRect();
@@ -447,7 +439,7 @@ initTheme();
     floodFill(x, y, brushColorInput.value);
   });
 
-  // ----- SHAPE TOOL (save before preview) -----
+  // SHAPE TOOL (save before preview)
   let shapeActive = false;
   canvas.addEventListener('mousedown', (e) => {
     if (currentTool !== 'shape') return;
@@ -504,18 +496,174 @@ initTheme();
     }
   });
 
-  // ----- ACTION BUTTONS -----
+  // BACKGROUND SELECTOR (includes "dark")
+  backgroundPatternSelect.addEventListener('change', () => {
+    const pattern = backgroundPatternSelect.value;
+    canvasContainer.className = 'canvas-container ' + pattern;
+  });
+
+  // IMAGE INSERTION
+  addImageButton.addEventListener('click', () => {
+    addImageInput.click();
+  });
+
+  addImageInput.addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(canvas.width / img.width, canvas.height / img.height, 1);
+        const w = Math.floor(img.width * scale);
+        const h = Math.floor(img.height * scale);
+        const x = Math.floor((canvas.width - w) / 2);
+        const y = Math.floor((canvas.height - h) / 2);
+
+        imageObj = { img, x, y, w, h };
+        ctx.drawImage(img, x, y, w, h);
+        toolSelect.value = 'moveImage';
+        currentTool = 'moveImage';
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+    addImageInput.value = '';
+  });
+
+  function redrawImageLayer() {
+    if (!imageObj) return;
+    ctx.drawImage(imageObj.img, imageObj.x, imageObj.y, imageObj.w, imageObj.h);
+  }
+
+  // MOVE IMAGE TOOL
+  canvas.addEventListener('mousedown', (e) => {
+    if (currentTool !== 'moveImage' || !imageObj) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    if (x >= imageObj.x && x <= imageObj.x + imageObj.w && y >= imageObj.y && y <= imageObj.y + imageObj.h) {
+      isMovingImage = true;
+      moveOffsetX = x - imageObj.x;
+      moveOffsetY = y - imageObj.y;
+      saveState();
+    }
+  });
+  canvas.addEventListener('mousemove', (e) => {
+    if (!isMovingImage || currentTool !== 'moveImage' || !imageObj) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    imageObj.x = x - moveOffsetX;
+    imageObj.y = y - moveOffsetY;
+    ctx.putImageData(undoStack[undoStack.length - 1], 0, 0);
+    redrawImageLayer();
+  });
+  canvas.addEventListener('mouseup', () => {
+    if (isMovingImage) {
+      isMovingImage = false;
+    }
+  });
+  canvas.addEventListener('mouseout', () => {
+    if (isMovingImage) {
+      isMovingImage = false;
+    }
+  });
+
+  // TOOL CHANGES (including crop overlay)
+  toolSelect.addEventListener('change', () => {
+    currentTool = toolSelect.value;
+    shapeOptionsDiv.style.display = (currentTool === 'shape') ? 'inline-block' : 'none';
+    cropOverlay.style.display = currentTool === 'cropImage' ? 'block' : 'none';
+    if (currentTool !== 'moveImage') isMovingImage = false;
+    if (currentTool !== 'cropImage') {
+      isCropping = false;
+      cropRect = null;
+      cropOverlay.style.display = 'none';
+    }
+  });
+
+  // CROP IMAGE TOOL
+  canvas.addEventListener('mousedown', (e) => {
+    if (currentTool !== 'cropImage' || !imageObj) return;
+    const rect = canvas.getBoundingClientRect();
+    cropStartX = e.clientX - rect.left;
+    cropStartY = e.clientY - rect.top;
+    isCropping = true;
+  });
+
+  canvas.addEventListener('mousemove', (e) => {
+    if (!isCropping || currentTool !== 'cropImage' || !imageObj) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const x1 = Math.min(cropStartX, x);
+    const y1 = Math.min(cropStartY, y);
+    const w = Math.abs(x - cropStartX);
+    const h = Math.abs(y - cropStartY);
+    cropRect = { x: x1, y: y1, w, h };
+
+    cropOverlay.style.left = x1 + 'px';
+    cropOverlay.style.top = y1 + 'px';
+    cropOverlay.style.width = w + 'px';
+    cropOverlay.style.height = h + 'px';
+    cropOverlay.style.display = 'block';
+  });
+
+  canvas.addEventListener('mouseup', () => {
+    if (!isCropping || currentTool !== 'cropImage' || !imageObj || !cropRect) return;
+    isCropping = false;
+
+    const ix1 = Math.max(cropRect.x, imageObj.x);
+    const iy1 = Math.max(cropRect.y, imageObj.y);
+    const ix2 = Math.min(cropRect.x + cropRect.w, imageObj.x + imageObj.w);
+    const iy2 = Math.min(cropRect.y + cropRect.h, imageObj.y + imageObj.h);
+    const iw = Math.max(0, ix2 - ix1);
+    const ih = Math.max(0, iy2 - iy1);
+
+    cropOverlay.style.display = 'none';
+
+    if (iw <= 0 || ih <= 0) return;
+
+    const off = document.createElement('canvas');
+    off.width = iw;
+    off.height = ih;
+    const offCtx = off.getContext('2d');
+
+    const sx = ix1 - imageObj.x;
+    const sy = iy1 - imageObj.y;
+
+    offCtx.drawImage(imageObj.img, sx, sy, iw, ih, 0, 0, iw, ih);
+
+    const croppedImg = new Image();
+    croppedImg.onload = () => {
+      saveState();
+      imageObj.img = croppedImg;
+      imageObj.x = ix1;
+      imageObj.y = iy1;
+      imageObj.w = iw;
+      imageObj.h = ih;
+
+      ctx.putImageData(undoStack[undoStack.length - 1], 0, 0);
+      redrawImageLayer();
+    };
+    croppedImg.src = off.toDataURL('image/png');
+  });
+
+  // ACTION BUTTONS
   newCanvasButton.addEventListener('click', () => {
     ctx.globalCompositeOperation = 'source-over';
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     undoStack = [];
     redoStack = [];
+    imageObj = null;
   });
   clearCanvasButton.addEventListener('click', () => {
     ctx.globalCompositeOperation = 'source-over';
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     undoStack = [];
     redoStack = [];
+    imageObj = null;
   });
   undoCanvasButton.addEventListener('click', undo);
   redoCanvasButton.addEventListener('click', redo);
@@ -526,7 +674,7 @@ initTheme();
     link.click();
   });
 
-  // ----- UI SYNC -----
+  // UI SYNC
   brushSizeInput.addEventListener('input', () => {
     brushSizeValue.textContent = brushSizeInput.value;
   });
@@ -547,37 +695,5 @@ initTheme();
   }
   brushColorInput.addEventListener('change', () => {
     addRecentColor(brushColorInput.value);
-  });
-
-  toolSelect.addEventListener('change', () => {
-    currentTool = toolSelect.value;
-    shapeOptionsDiv.style.display = (currentTool === 'shape') ? 'inline-block' : 'none';
-  });
-  brushTypeSelect.addEventListener('change', () => {
-    currentBrush = brushTypeSelect.value;
-  });
-  backgroundPatternSelect.addEventListener('change', () => {
-    const pattern = backgroundPatternSelect.value;
-    canvasContainer.className = 'canvas-container ' + pattern;
-  });
-
-  // ----- SHORTCUTS -----
-  document.addEventListener('keydown', (e) => {
-    const key = e.key.toLowerCase();
-    if (key === 'p') {
-      toolSelect.value = 'pen'; currentTool = 'pen';
-    } else if (key === 'e') {
-      toolSelect.value = 'eraser'; currentTool = 'eraser';
-    } else if (key === 'f') {
-      toolSelect.value = 'fill'; currentTool = 'fill';
-    } else if (key === 's') {
-      toolSelect.value = 'shape'; currentTool = 'shape';
-    } else if (key === 'y') {
-      symmetryCheckbox.checked = !symmetryCheckbox.checked;
-    } else if (key === 'z') {
-      undo();
-    } else if (e.shiftKey && key === 'z') {
-      redo();
-    }
   });
 });
