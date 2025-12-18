@@ -50,6 +50,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let selectStartX = 0, selectStartY = 0;
   let selectRect = null; // { x, y, w, h }
 
+  // CROP IMAGE
+  let isCropping = false, cropStartX = 0, cropStartY = 0, cropRect = null;
+
   // THEME (body.dark + localStorage + emoji ☀️ / 🌙)
   const THEME_KEY = 'drawnow-theme';
   function applyTheme(mode) {
@@ -544,9 +547,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // CROP IMAGE 
-  let isCropping = false, cropStartX = 0, cropStartY = 0, cropRect = null;
-
+  // CROP IMAGE
   canvas.addEventListener('mousedown', (e) => {
     if (currentTool !== 'cropImage') return;
     if (!overlayObj) return;
@@ -655,6 +656,127 @@ document.addEventListener('DOMContentLoaded', () => {
       renderOverlay();
     } else {
       updateTransformBox(); // hides box if not transforming
+    }
+  });
+
+  // KEYBOARD SHORTCUTS 
+  document.addEventListener('keydown', (e) => {
+    const key = (e.key || '').toLowerCase();
+    const ctrlOrCmd = e.ctrlKey || e.metaKey;
+
+    // Don't steal shortcuts while typing in inputs/textareas/selects or contenteditable
+    const t = e.target;
+    const isTypingTarget =
+      t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+
+    const prevent = () => { e.preventDefault(); e.stopPropagation(); };
+
+    // ESC: cancel selection/crop/transform interaction (doesn't delete overlay)
+    if (key === 'escape') {
+      prevent();
+      isSelecting = false;
+      isCropping = false;
+      cropOverlay.style.display = 'none';
+      hideSelection();
+      transformMode = null;
+      activeHandle = null;
+      return;
+    }
+
+    if (!ctrlOrCmd) return;
+
+    // Undo / Redo (Ctrl/Cmd+Z, Ctrl/Cmd+Y, Ctrl/Cmd+Shift+Z)
+    if (key === 'z' && !e.shiftKey) {
+      if (!isTypingTarget) { prevent(); undo(); }
+      return;
+    }
+    if (key === 'y' || (key === 'z' && e.shiftKey)) {
+      if (!isTypingTarget) { prevent(); redo(); }
+      return;
+    }
+
+    // Cut/Copy/Paste: let browser handle for inputs; provide minimal canvas helpers
+    if (key === 'x') {
+      // Optional: switch to select tool for "cut workflow"
+      if (!isTypingTarget) {
+        prevent();
+        toolSelect.value = 'select';
+        currentTool = 'select';
+      }
+      return;
+    }
+
+    if (key === 'c') {
+      // Optional: duplicate overlay when transforming
+      if (!isTypingTarget && overlayObj && currentTool === 'transform') {
+        prevent();
+
+        const temp = document.createElement('canvas');
+        temp.width = overlayObj.w;
+        temp.height = overlayObj.h;
+        temp.getContext('2d').drawImage(overlayObj.img, 0, 0, overlayObj.w, overlayObj.h);
+
+        const img = new Image();
+        img.onload = () => {
+          if (!baseImageData) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          overlayObj = {
+            img,
+            x: overlayObj.x + 10,
+            y: overlayObj.y + 10,
+            w: overlayObj.w,
+            h: overlayObj.h,
+            angle: overlayObj.angle || 0
+          };
+          toolSelect.value = 'transform';
+          currentTool = 'transform';
+          updateTransformBox();
+          renderOverlay();
+        };
+        img.src = temp.toDataURL('image/png');
+      }
+      return;
+    }
+
+    if (key === 'v') {
+      // Clipboard image paste needs permissions (navigator.clipboard.read()).
+      return;
+    }
+
+    // Select all: switch to select tool (canvas has no native "select all")
+    if (key === 'a') {
+      if (!isTypingTarget) {
+        prevent();
+        toolSelect.value = 'select';
+        currentTool = 'select';
+      }
+      return;
+    }
+
+    // Save/Download: Ctrl/Cmd+S
+    if (key === 's') {
+      if (!isTypingTarget) {
+        prevent();
+        downloadCanvasButton.click();
+      }
+      return;
+    }
+
+    // New canvas: Ctrl/Cmd+N
+    if (key === 'n') {
+      if (!isTypingTarget) {
+        prevent();
+        newCanvasButton.click();
+      }
+      return;
+    }
+
+    // Commit overlay: Ctrl/Cmd+Enter (handy when transforming)
+    if (key === 'enter') {
+      if (!isTypingTarget && currentTool === 'transform' && overlayObj) {
+        prevent();
+        commitOverlay();
+      }
+      return;
     }
   });
 });
