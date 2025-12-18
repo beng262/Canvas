@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Overlay state: can represent an inserted image OR a selected region
   let overlayObj = null; // { img: HTMLImageElement, x, y, w, h, angle }
-  let baseImageData = null; // snapshot of canvas under overlay
+  let baseImageData = null; // Snapshot of canvas under overlay
   let transformMode = null; // 'move' | 'resize' | 'rotate'
   let activeHandle = null;
   let startMouse = { x: 0, y: 0 };
@@ -50,10 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let selectStartX = 0, selectStartY = 0;
   let selectRect = null; // { x, y, w, h }
 
-  // CROP IMAGE
-  let isCropping = false, cropStartX = 0, cropStartY = 0, cropRect = null;
-
-  // THEME (body.dark + localStorage + emoji ☀️ / 🌙)
+  // Theme (body.dark + localStorage + emoji ☀️ / 🌙)
   const THEME_KEY = 'drawnow-theme';
   function applyTheme(mode) {
     const isDark = mode === 'dark';
@@ -79,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   initTheme();
 
-  // HISTORY (save once before change)
+  // History (save once before change)
   function saveState() {
     redoStack = [];
     try {
@@ -108,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {}
   }
 
-  // COLOR UTILS
+  // Color utils
   function hexToRgba(hex, opacity) {
     hex = hex.replace('#', '');
     if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
@@ -132,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function matchColorsAt(i, t, d) { return d[i]===t[0] && d[i+1]===t[1] && d[i+2]===t[2] && d[i+3]===t[3]; }
   function setPixelColor(i, c, d) { d[i]=c[0]; d[i+1]=c[1]; d[i+2]=c[2]; d[i+3]=c[3]; }
 
-  // FLOOD FILL
+  // Flood fill
   function floodFill(startX, startY, fillColor) {
     const width = canvas.width, height = canvas.height;
     const imageData = ctx.getImageData(0, 0, width, height);
@@ -166,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.putImageData(imageData, 0, 0);
   }
 
-  // SHAPES
+  // Shapes
   function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
     let rot = (Math.PI / 2) * 3, x = cx, y = cy, step = Math.PI / spikes;
     ctx.beginPath();
@@ -186,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.closePath(); ctx.stroke(); ctx.restore();
   }
 
-  // BRUSHES
+  // Brushes
   const brushFunctions = {
     round(e, x, y, size, color, opacity) { ctx.strokeStyle = hexToRgba(color, opacity); ctx.lineWidth = size; ctx.lineCap = 'round'; ctx.lineTo(x, y); ctx.stroke(); },
     square(e, x, y, size, color, opacity) { ctx.fillStyle = hexToRgba(color, opacity); ctx.fillRect(x - size / 2, y - size / 2, size, size); },
@@ -210,7 +207,12 @@ document.addEventListener('DOMContentLoaded', () => {
     crayon(e, x, y, size, color, opacity) { ctx.strokeStyle = hexToRgba(color, opacity * 0.9); ctx.lineWidth = size; ctx.lineCap = 'round'; ctx.lineTo(x, y); ctx.stroke(); }
   };
 
-  // DRAWING (disabled when select/transform/crop active)
+  // Brush type sync
+  brushTypeSelect.addEventListener('change', () => {
+    currentBrush = brushTypeSelect.value;
+  });
+
+  // Drawing (disabled when select/transform/crop active)
   canvas.addEventListener('mousedown', (e) => {
     if (['shape','fill','select','transform','cropImage'].includes(currentTool)) return;
     const rect = canvas.getBoundingClientRect();
@@ -246,7 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
   canvas.addEventListener('mouseup', () => { isDrawing = false; });
   canvas.addEventListener('mouseout', () => { isDrawing = false; });
 
-  // FILL TOOL
+  // Fill tool
   canvas.addEventListener('mousedown', (e) => {
     if (currentTool !== 'fill') return;
     const rect = canvas.getBoundingClientRect();
@@ -258,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderOverlay();
   });
 
-  // SHAPES (save before preview)
+  // Shapes (save before preview)
   let shapeActive = false;
   canvas.addEventListener('mousedown', (e) => {
     if (currentTool !== 'shape') return;
@@ -303,13 +305,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   canvas.addEventListener('mouseup', () => { if (currentTool === 'shape') shapeActive = false; });
 
-  // BACKGROUND SELECTOR
+  // Background selector
   backgroundPatternSelect.addEventListener('change', () => {
     const pattern = backgroundPatternSelect.value;
     canvasContainer.className = 'canvas-container ' + pattern;
   });
 
-  // IMAGE INSERTION (auto-switch to Transform)
+  // Image insertion (auto-switch to Transform)
   const addImageButton = document.getElementById('addImageButton');
   const addImageInput = document.getElementById('addImageInput');
   addImageButton.addEventListener('click', () => addImageInput.click());
@@ -339,7 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
     addImageInput.value = '';
   });
 
-  // SELECTION TOOL
+  // Selection tool
   function showSelection(x, y, w, h) {
     selectionOverlay.style.display = 'block';
     Object.assign(selectionOverlay.style, {
@@ -389,12 +391,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const img = new Image();
     img.onload = () => {
       saveState();
+
       // Erase selected area from base canvas and snapshot base
       ctx.clearRect(selectRect.x, selectRect.y, selectRect.w, selectRect.h);
       baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
       // Create overlay from selection
       overlayObj = { img, x: selectRect.x, y: selectRect.y, w: selectRect.w, h: selectRect.h, angle: 0 };
+
       // Switch to transform automatically
       toolSelect.value = 'transform';
       currentTool = 'transform';
@@ -514,40 +518,27 @@ document.addEventListener('DOMContentLoaded', () => {
     commitOverlay();
   });
 
-  // Commit on tool change when leaving transform
-  toolSelect.addEventListener('change', () => {
-    currentTool = toolSelect.value;
-    shapeOptionsDiv.style.display = (currentTool === 'shape') ? 'inline-block' : 'none';
-
-    if (currentTool !== 'transform') {
-      commitOverlay();
-    } else {
-      if (!baseImageData) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      updateTransformBox();
-      renderOverlay();
-    }
-
-    // Show crop overlay only in crop mode
-    cropOverlay.style.display = currentTool === 'cropImage' ? 'block' : 'none';
-    if (currentTool !== 'cropImage') {
-      cropOverlay.style.display = 'none';
-    }
-  });
-
   function commitOverlay() {
     if (overlayObj && baseImageData) {
       saveState();
+
       // Redraw final composite into canvas
       renderOverlay();
+
       // Update base snapshot to include overlay content
       baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
       // Clear overlay and box
       overlayObj = null;
       updateTransformBox();
     }
   }
 
-  // CROP IMAGE
+  // Crop image
+  cropOverlay.style.pointerEvents = 'none';
+
+  let isCropping = false, cropStartX = 0, cropStartY = 0, cropRect = null;
+
   canvas.addEventListener('mousedown', (e) => {
     if (currentTool !== 'cropImage') return;
     if (!overlayObj) return;
@@ -560,6 +551,7 @@ document.addEventListener('DOMContentLoaded', () => {
     cropStartY = e.clientY - rect.top;
     isCropping = true;
   });
+
   canvas.addEventListener('mousemove', (e) => {
     if (!isCropping || currentTool !== 'cropImage' || !overlayObj) return;
     const rect = canvas.getBoundingClientRect();
@@ -574,9 +566,11 @@ document.addEventListener('DOMContentLoaded', () => {
       left: x1 + 'px', top: y1 + 'px', width: w + 'px', height: h + 'px', display: 'block'
     });
   });
+
   canvas.addEventListener('mouseup', () => {
     if (!isCropping || currentTool !== 'cropImage' || !overlayObj || !cropRect) return;
-    isCropping = false; cropOverlay.style.display = 'none';
+    isCropping = false;
+    cropOverlay.style.display = 'none';
 
     // Intersection with overlay bounds in canvas coordinates (no rotation)
     const ix1 = Math.max(cropRect.x, overlayObj.x);
@@ -586,21 +580,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const iw = Math.max(0, ix2 - ix1), ih = Math.max(0, iy2 - iy1);
     if (iw <= 0 || ih <= 0) return;
 
-    const off = document.createElement('canvas'); off.width = iw; off.height = ih;
+    const off = document.createElement('canvas');
+    off.width = iw; off.height = ih;
     const offCtx = off.getContext('2d');
+
     const sx = ix1 - overlayObj.x, sy = iy1 - overlayObj.y;
     offCtx.drawImage(overlayObj.img, sx, sy, iw, ih, 0, 0, iw, ih);
 
     const croppedImg = new Image();
     croppedImg.onload = () => {
-      overlayObj.img = croppedImg; overlayObj.x = ix1; overlayObj.y = iy1; overlayObj.w = iw; overlayObj.h = ih;
+      overlayObj.img = croppedImg;
+      overlayObj.x = ix1; overlayObj.y = iy1; overlayObj.w = iw; overlayObj.h = ih;
       overlayObj.angle = 0;
-      updateTransformBox(); renderOverlay();
+      updateTransformBox();
+      renderOverlay();
     };
     croppedImg.src = off.toDataURL('image/png');
   });
 
-  // ACTION BUTTONS
+  // Action buttons
   newCanvasButton.addEventListener('click', () => {
     ctx.globalCompositeOperation = 'source-over';
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -608,6 +606,7 @@ document.addEventListener('DOMContentLoaded', () => {
     overlayObj = null; baseImageData = null; selectRect = null;
     hideSelection(); updateTransformBox();
   });
+
   clearCanvasButton.addEventListener('click', () => {
     ctx.globalCompositeOperation = 'source-over';
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -615,17 +614,19 @@ document.addEventListener('DOMContentLoaded', () => {
     overlayObj = null; baseImageData = null; selectRect = null;
     hideSelection(); updateTransformBox();
   });
+
   undoCanvasButton.addEventListener('click', undo);
   redoCanvasButton.addEventListener('click', redo);
+
   downloadCanvasButton.addEventListener('click', () => {
-    if (overlayObj && baseImageData) renderOverlay(); // flatten for export
+    if (overlayObj && baseImageData) renderOverlay(); // Flatten for export
     const link = document.createElement('a');
     link.download = 'DrawNow_art.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
   });
 
-  // UI SYNC
+  // UI sync
   brushSizeInput.addEventListener('input', () => { brushSizeValue.textContent = brushSizeInput.value; });
   opacityInput.addEventListener('input', () => { opacityValue.textContent = opacityInput.value; });
 
@@ -643,82 +644,103 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   brushColorInput.addEventListener('change', () => addRecentColor(brushColorInput.value));
 
-  // Tool changes visibility
+  // Tool change visibility (Single handler to avoid conflicts)
   toolSelect.addEventListener('change', () => {
-    currentTool = toolSelect.value;
-    shapeOptionsDiv.style.display = (currentTool === 'shape') ? 'inline-block' : 'none';
+    const nextTool = toolSelect.value;
+
+    // Update shape options
+    shapeOptionsDiv.style.display = (nextTool === 'shape') ? 'inline-block' : 'none';
+
+    // Commit overlay only when leaving transform to a non-crop tool
+    if (currentTool === 'transform' && nextTool !== 'transform' && nextTool !== 'cropImage') {
+      commitOverlay();
+    }
+
+    currentTool = nextTool;
+
+    // Toggle crop overlay
+    cropOverlay.style.display = (currentTool === 'cropImage') ? 'block' : 'none';
     if (currentTool !== 'cropImage') cropOverlay.style.display = 'none';
+
+    // Hide selection overlay when leaving select
     if (currentTool !== 'select') hideSelection();
 
+    // Transform box behavior
     if (currentTool === 'transform') {
       if (!baseImageData) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       updateTransformBox();
       renderOverlay();
     } else {
-      updateTransformBox(); // hides box if not transforming
+      updateTransformBox();
+      if (currentTool === 'cropImage' && overlayObj && baseImageData) renderOverlay();
     }
   });
 
-  // KEYBOARD SHORTCUTS 
+  // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     const key = (e.key || '').toLowerCase();
     const ctrlOrCmd = e.ctrlKey || e.metaKey;
 
-    // Don't steal shortcuts while typing in inputs/textareas/selects or contenteditable
     const t = e.target;
     const isTypingTarget =
       t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
 
-    const prevent = () => { e.preventDefault(); e.stopPropagation(); };
-
-    // ESC: cancel selection/crop/transform interaction (doesn't delete overlay)
-    if (key === 'escape') {
-      prevent();
-      isSelecting = false;
-      isCropping = false;
-      cropOverlay.style.display = 'none';
-      hideSelection();
-      transformMode = null;
-      activeHandle = null;
-      return;
-    }
-
     if (!ctrlOrCmd) return;
 
-    // Undo / Redo (Ctrl/Cmd+Z, Ctrl/Cmd+Y, Ctrl/Cmd+Shift+Z)
+    const prevent = () => { e.preventDefault(); e.stopPropagation(); };
+
+    // Undo / Redo
     if (key === 'z' && !e.shiftKey) {
       if (!isTypingTarget) { prevent(); undo(); }
       return;
     }
-    if (key === 'y' || (key === 'z' && e.shiftKey)) {
+    if ((key === 'y') || (key === 'z' && e.shiftKey)) {
       if (!isTypingTarget) { prevent(); redo(); }
       return;
     }
 
-    // Cut/Copy/Paste: let browser handle for inputs; provide minimal canvas helpers
-    if (key === 'x') {
-      // Optional: switch to select tool for "cut workflow"
+    // Save / Download
+    if (key === 's') {
+      if (!isTypingTarget) { prevent(); downloadCanvasButton.click(); }
+      return;
+    }
+
+    // New canvas
+    if (key === 'n') {
+      if (!isTypingTarget) { prevent(); newCanvasButton.click(); }
+      return;
+    }
+
+    // Select tool
+    if (key === 'a' || key === 'x') {
       if (!isTypingTarget) {
         prevent();
         toolSelect.value = 'select';
         currentTool = 'select';
+        shapeOptionsDiv.style.display = 'none';
+        cropOverlay.style.display = 'none';
+        updateTransformBox();
       }
       return;
     }
 
+    // Copy overlay (Duplicate) when transforming
     if (key === 'c') {
-      // Optional: duplicate overlay when transforming
-      if (!isTypingTarget && overlayObj && currentTool === 'transform') {
+      if (!isTypingTarget && overlayObj && (currentTool === 'transform' || currentTool === 'cropImage')) {
         prevent();
 
+        // Ensure base snapshot exists
+        if (!baseImageData) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        // Duplicate the current overlay pixels at current size
         const temp = document.createElement('canvas');
         temp.width = overlayObj.w;
         temp.height = overlayObj.h;
-        temp.getContext('2d').drawImage(overlayObj.img, 0, 0, overlayObj.w, overlayObj.h);
+        const tctx = temp.getContext('2d');
+        tctx.drawImage(overlayObj.img, 0, 0, overlayObj.w, overlayObj.h);
 
         const img = new Image();
         img.onload = () => {
-          if (!baseImageData) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
           overlayObj = {
             img,
             x: overlayObj.x + 10,
@@ -737,46 +759,24 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    if (key === 'v') {
-      // Clipboard image paste needs permissions (navigator.clipboard.read()).
+    // Escape cancels active interactions
+    if (key === 'escape') {
+      prevent();
+      isSelecting = false;
+      isCropping = false;
+      cropOverlay.style.display = 'none';
+      hideSelection();
+      transformMode = null;
+      activeHandle = null;
       return;
     }
 
-    // Select all: switch to select tool (canvas has no native "select all")
-    if (key === 'a') {
-      if (!isTypingTarget) {
-        prevent();
-        toolSelect.value = 'select';
-        currentTool = 'select';
-      }
-      return;
-    }
-
-    // Save/Download: Ctrl/Cmd+S
-    if (key === 's') {
-      if (!isTypingTarget) {
-        prevent();
-        downloadCanvasButton.click();
-      }
-      return;
-    }
-
-    // New canvas: Ctrl/Cmd+N
-    if (key === 'n') {
-      if (!isTypingTarget) {
-        prevent();
-        newCanvasButton.click();
-      }
-      return;
-    }
-
-    // Commit overlay: Ctrl/Cmd+Enter (handy when transforming)
+    // Enter commits overlay when transforming
     if (key === 'enter') {
       if (!isTypingTarget && currentTool === 'transform' && overlayObj) {
         prevent();
         commitOverlay();
       }
-      return;
     }
   });
 });
