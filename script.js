@@ -216,9 +216,167 @@ document.addEventListener('DOMContentLoaded', () => {
     currentBrush = brushTypeSelect.value;
   });
 
-  // Drawing (disabled when select/transform/crop active)
+  // Selection overlay helpers
+  function showSelection(x, y, w, h) {
+    selectionOverlay.style.display = 'block';
+    Object.assign(selectionOverlay.style, {
+      left: x + 'px',
+      top: y + 'px',
+      width: w + 'px',
+      height: h + 'px'
+    });
+  }
+  function hideSelection() {
+    selectionOverlay.style.display = 'none';
+  }
+
+  // Overlay rendering: base + transformed overlay (prevents duplicates)
+  function renderOverlay() {
+    if (!overlayObj || !baseImageData) return;
+    ctx.putImageData(baseImageData, 0, 0);
+    ctx.save();
+    ctx.translate(overlayObj.x, overlayObj.y);
+    ctx.rotate(overlayObj.angle || 0);
+    ctx.drawImage(overlayObj.img, 0, 0, overlayObj.w, overlayObj.h);
+    ctx.restore();
+  }
+
+  // Transform box sync
+  function updateTransformBox() {
+    if (!overlayObj || currentTool !== 'transform') {
+      transformBox.style.display = 'none';
+      return;
+    }
+    transformBox.style.display = 'block';
+    transformBox.style.width = overlayObj.w + 'px';
+    transformBox.style.height = overlayObj.h + 'px';
+    transformBox.style.transform = `translate(${overlayObj.x}px, ${overlayObj.y}px) rotate(${overlayObj.angle || 0}rad)`;
+  }
+
+  // Helpers
+  function canvasPoint(evt) {
+    const r = canvas.getBoundingClientRect();
+    return { x: evt.clientX - r.left, y: evt.clientY - r.top };
+  }
+
+  // Commit overlay
+  function commitOverlay() {
+    if (overlayObj && baseImageData) {
+      saveState();
+      renderOverlay();
+      baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      overlayObj = null;
+      updateTransformBox();
+    }
+  }
+
+  // Flatten overlay without losing pixels (Used before text)
+  function flattenOverlayIfAny() {
+    if (!overlayObj || !baseImageData) return;
+    renderOverlay();
+    baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    overlayObj = null;
+    updateTransformBox();
+  }
+
+  // Text tool
+  function addTextAt(x, y) {
+    flattenOverlayIfAny();
+
+    const text = prompt('Enter text (Use \\n for new lines):', 'Text');
+    if (!text) return;
+
+    saveState();
+
+    const size = Math.max(6, parseInt(brushSizeInput.value, 10) || 24);
+    const opacity = Math.max(0, Math.min(100, parseFloat(opacityInput.value) || 100));
+    const color = brushColorInput.value;
+
+    ctx.save();
+    ctx.fillStyle = hexToRgba(color, opacity);
+    ctx.textBaseline = 'top';
+    ctx.font = `${size}px Arial`;
+
+    const lines = String(text).split('\n');
+    const lineHeight = Math.round(size * 1.2);
+
+    for (let i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i], x, y + i * lineHeight);
+    }
+
+    ctx.restore();
+
+    baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  }
+
+  // Clipboard helpers
+  function copyOverlayToClipboard() {
+    if (!overlayObj) return;
+    const off = document.createElement('canvas');
+    off.width = Math.max(1, Math.round(overlayObj.w));
+    off.height = Math.max(1, Math.round(overlayObj.h));
+    const offCtx = off.getContext('2d');
+    offCtx.drawImage(overlayObj.img, 0, 0, off.width, off.height);
+    clipboardObj = { dataUrl: off.toDataURL('image/png'), w: off.width, h: off.height };
+  }
+
+  function cutOverlayToClipboard() {
+    if (!overlayObj) return;
+    saveState();
+    copyOverlayToClipboard();
+    if (baseImageData) ctx.putImageData(baseImageData, 0, 0);
+    overlayObj = null;
+    updateTransformBox();
+  }
+
+  function pasteClipboardAsOverlay() {
+    if (!clipboardObj) return;
+    const img = new Image();
+    img.onload = () => {
+      saveState();
+      baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const w = clipboardObj.w, h = clipboardObj.h;
+      const x = Math.floor((canvas.width - w) / 2);
+      const y = Math.floor((canvas.height - h) / 2);
+      overlayObj = { img, x, y, w, h, angle: 0 };
+      toolSelect.value = 'transform';
+      currentTool = 'transform';
+      updateTransformBox();
+      renderOverlay();
+    };
+    img.src = clipboardObj.dataUrl;
+  }
+
+  // Flip canvas
+  function flipCanvasHorizontal() {
+    saveState();
+
+    flattenOverlayIfAny();
+
+    const off = document.createElement('canvas');
+    off.width = canvas.width;
+    off.height = canvas.height;
+    const offCtx = off.getContext('2d');
+    offCtx.drawImage(canvas, 0, 0);
+
+    ctx.save();
+    ctx.setTransform(-1, 0, 0, 1, canvas.width, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(off, 0, 0);
+    ctx.restore();
+
+    baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  }
+
+  if (flipCanvasButton) {
+    flipCanvasButton.addEventListener('click', () => {
+      flipCanvasHorizontal();
+    });
+  }
+
+  // Drawing (disabled when select/transform/crop/text active)
   canvas.addEventListener('mousedown', (e) => {
-    if (['shape','fill','select','transform','cropImage'].includes(currentTool)) return;
+    if (['shape','fill','select','transform','cropImage','text'].includes(currentTool)) return;
     const rect = canvas.getBoundingClientRect();
     lastX = e.clientX - rect.left;
     lastY = e.clientY - rect.top;
@@ -228,7 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.moveTo(lastX, lastY);
   });
   canvas.addEventListener('mousemove', (e) => {
-    if (!isDrawing || ['fill','shape','select','transform','cropImage'].includes(currentTool)) return;
+    if (!isDrawing || ['fill','shape','select','transform','cropImage','text'].includes(currentTool)) return;
     const rect = canvas.getBoundingClientRect();
     const currentX = e.clientX - rect.left;
     const currentY = e.clientY - rect.top;
@@ -262,6 +420,13 @@ document.addEventListener('DOMContentLoaded', () => {
     floodFill(x, y, brushColorInput.value);
     if (overlayObj) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     renderOverlay();
+  });
+
+  // Text tool
+  canvas.addEventListener('mousedown', (e) => {
+    if (currentTool !== 'text') return;
+    const p = canvasPoint(e);
+    addTextAt(p.x, p.y);
   });
 
   // Shapes (save before preview)
@@ -346,19 +511,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Selection tool
-  function showSelection(x, y, w, h) {
-    selectionOverlay.style.display = 'block';
-    Object.assign(selectionOverlay.style, {
-      left: x + 'px',
-      top: y + 'px',
-      width: w + 'px',
-      height: h + 'px'
-    });
-  }
-  function hideSelection() {
-    selectionOverlay.style.display = 'none';
-  }
-
   canvas.addEventListener('mousedown', (e) => {
     if (currentTool !== 'select') return;
     const r = canvas.getBoundingClientRect();
@@ -413,35 +565,6 @@ document.addEventListener('DOMContentLoaded', () => {
     img.src = off.toDataURL('image/png');
   });
 
-  // Overlay rendering: base + transformed overlay (prevents duplicates)
-  function renderOverlay() {
-    if (!overlayObj || !baseImageData) return;
-    ctx.putImageData(baseImageData, 0, 0);
-    ctx.save();
-    ctx.translate(overlayObj.x, overlayObj.y);
-    ctx.rotate(overlayObj.angle || 0);
-    ctx.drawImage(overlayObj.img, 0, 0, overlayObj.w, overlayObj.h);
-    ctx.restore();
-  }
-
-  // Transform box sync
-  function updateTransformBox() {
-    if (!overlayObj || currentTool !== 'transform') {
-      transformBox.style.display = 'none';
-      return;
-    }
-    transformBox.style.display = 'block';
-    transformBox.style.width = overlayObj.w + 'px';
-    transformBox.style.height = overlayObj.h + 'px';
-    transformBox.style.transform = `translate(${overlayObj.x}px, ${overlayObj.y}px) rotate(${overlayObj.angle || 0}rad)`;
-  }
-
-  // Helpers
-  function canvasPoint(evt) {
-    const r = canvas.getBoundingClientRect();
-    return { x: evt.clientX - r.left, y: evt.clientY - r.left };
-  }
-
   // Transform interactions (Pointer Events for robustness)
   transformBox.addEventListener('pointerdown', (e) => {
     if (!overlayObj || currentTool !== 'transform') return;
@@ -456,11 +579,7 @@ document.addEventListener('DOMContentLoaded', () => {
     transformMode = isRotate ? 'rotate' : (handle ? 'resize' : 'move');
     activeHandle = handle;
 
-    const p = (() => {
-      const r = canvas.getBoundingClientRect();
-      return { x: e.clientX - r.left, y: e.clientY - r.top };
-    })();
-
+    const p = canvasPoint(e);
     startMouse = p;
     startState = { x: overlayObj.x, y: overlayObj.y, w: overlayObj.w, h: overlayObj.h, angle: overlayObj.angle || 0 };
 
@@ -469,10 +588,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   transformBox.addEventListener('pointermove', (e) => {
     if (!overlayObj || currentTool !== 'transform' || !transformMode) return;
-    const p = (() => {
-      const r = canvas.getBoundingClientRect();
-      return { x: e.clientX - r.left, y: e.clientY - r.top };
-    })();
+    const p = canvasPoint(e);
     const dx = p.x - startMouse.x;
     const dy = p.y - startMouse.y;
 
@@ -528,93 +644,6 @@ document.addEventListener('DOMContentLoaded', () => {
   transformBox.addEventListener('dblclick', () => {
     commitOverlay();
   });
-
-  function commitOverlay() {
-    if (overlayObj && baseImageData) {
-      saveState();
-
-      // Redraw final composite into canvas
-      renderOverlay();
-
-      // Update base snapshot to include overlay content
-      baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-      // Clear overlay and box
-      overlayObj = null;
-      updateTransformBox();
-    }
-  }
-
-  // Clipboard helpers
-  function copyOverlayToClipboard() {
-    if (!overlayObj) return;
-    const off = document.createElement('canvas');
-    off.width = Math.max(1, Math.round(overlayObj.w));
-    off.height = Math.max(1, Math.round(overlayObj.h));
-    const offCtx = off.getContext('2d');
-    offCtx.drawImage(overlayObj.img, 0, 0, off.width, off.height);
-    clipboardObj = { dataUrl: off.toDataURL('image/png'), w: off.width, h: off.height };
-  }
-
-  function cutOverlayToClipboard() {
-    if (!overlayObj) return;
-    saveState();
-    copyOverlayToClipboard();
-    if (baseImageData) ctx.putImageData(baseImageData, 0, 0);
-    overlayObj = null;
-    updateTransformBox();
-  }
-
-  function pasteClipboardAsOverlay() {
-    if (!clipboardObj) return;
-    const img = new Image();
-    img.onload = () => {
-      saveState();
-      baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const w = clipboardObj.w, h = clipboardObj.h;
-      const x = Math.floor((canvas.width - w) / 2);
-      const y = Math.floor((canvas.height - h) / 2);
-      overlayObj = { img, x, y, w, h, angle: 0 };
-      toolSelect.value = 'transform';
-      currentTool = 'transform';
-      updateTransformBox();
-      renderOverlay();
-    };
-    img.src = clipboardObj.dataUrl;
-  }
-
-  // Flip canvas
-  function flipCanvasHorizontal() {
-    saveState();
-
-    // Flatten overlay into canvas before flipping for consistent results
-    if (overlayObj && baseImageData) {
-      renderOverlay();
-      baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      overlayObj = null;
-      updateTransformBox();
-    }
-
-    const off = document.createElement('canvas');
-    off.width = canvas.width;
-    off.height = canvas.height;
-    const offCtx = off.getContext('2d');
-    offCtx.drawImage(canvas, 0, 0);
-
-    ctx.save();
-    ctx.setTransform(-1, 0, 0, 1, canvas.width, 0);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(off, 0, 0);
-    ctx.restore();
-
-    baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  }
-
-  if (flipCanvasButton) {
-    flipCanvasButton.addEventListener('click', () => {
-      flipCanvasHorizontal();
-    });
-  }
 
   // Crop image
   cropOverlay.style.pointerEvents = 'none';
@@ -768,7 +797,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderOverlay();
     } else {
       updateTransformBox();
-      if (currentTool === 'cropImage' && overlayObj && baseImageData) renderOverlay();
+      if ((currentTool === 'cropImage') && overlayObj && baseImageData) renderOverlay();
     }
   });
 
@@ -838,6 +867,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // New canvas
     if (key === 'n') {
       if (!isTypingTarget) { prevent(); newCanvasButton.click(); }
+      return;
+    }
+
+    // Switch to Text tool
+    if (key === 't') {
+      if (!isTypingTarget) {
+        prevent();
+        toolSelect.value = 'text';
+        currentTool = 'text';
+        shapeOptionsDiv.style.display = 'none';
+        cropOverlay.style.display = 'none';
+        updateTransformBox();
+      }
       return;
     }
 
