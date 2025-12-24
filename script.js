@@ -36,6 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Overlays & transform
   const selectionOverlay = document.getElementById('selectionOverlay');
+  const lassoOverlay = document.getElementById('lassoOverlay');
+  const lassoCtx = lassoOverlay.getContext('2d');
   const cropOverlay = document.getElementById('cropOverlay');
   const transformBox = document.getElementById('transformBox');
 
@@ -51,6 +53,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let isSelecting = false;
   let selectStartX = 0, selectStartY = 0;
   let selectRect = null; // { x, y, w, h }
+  let isLassoing = false;
+  let lassoPoints = [];
 
   // Clipboard state (internal app clipboard)
   let clipboardObj = null; // { dataUrl, w, h }
@@ -229,6 +233,100 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   function hideSelection() {
     selectionOverlay.style.display = 'none';
+  }
+ lassoOverlay.width = canvas.width;
+  lassoOverlay.height = canvas.height;
+
+  function clearLassoOverlay() {
+    lassoCtx.clearRect(0, 0, lassoOverlay.width, lassoOverlay.height);
+  }
+
+  function drawLassoOverlay(points, previewPoint = null) {
+    clearLassoOverlay();
+    if (!points.length) return;
+
+    const pathPoints = previewPoint ? [...points, previewPoint] : points;
+    lassoCtx.save();
+    lassoCtx.strokeStyle = '#22c55e';
+    lassoCtx.fillStyle = 'rgba(34, 197, 94, 0.12)';
+    lassoCtx.lineWidth = 1.5;
+    lassoCtx.setLineDash([6, 4]);
+    lassoCtx.beginPath();
+    pathPoints.forEach((p, i) => {
+      if (i === 0) lassoCtx.moveTo(p.x, p.y); else lassoCtx.lineTo(p.x, p.y);
+    });
+    if (!previewPoint && pathPoints.length > 2) lassoCtx.closePath();
+    lassoCtx.stroke();
+    if (pathPoints.length > 2) lassoCtx.fill();
+    lassoCtx.restore();
+  }
+
+  function resetLasso() {
+    isLassoing = false;
+    lassoPoints = [];
+    clearLassoOverlay();
+  }
+
+  function createLassoPath(targetCtx, offsetX = 0, offsetY = 0) {
+    if (!lassoPoints.length) return;
+    targetCtx.beginPath();
+    lassoPoints.forEach((p, i) => {
+      const x = p.x - offsetX;
+      const y = p.y - offsetY;
+      if (i === 0) targetCtx.moveTo(x, y); else targetCtx.lineTo(x, y);
+    });
+    targetCtx.closePath();
+  }
+
+  function finalizeLassoSelection() {
+    if (lassoPoints.length < 3) {
+      resetLasso();
+      return;
+    }
+
+    const xs = lassoPoints.map(p => p.x);
+    const ys = lassoPoints.map(p => p.y);
+    const bounds = {
+      x: Math.min(...xs),
+      y: Math.min(...ys),
+      w: Math.max(1, Math.round(Math.max(...xs) - Math.min(...xs))),
+      h: Math.max(1, Math.round(Math.max(...ys) - Math.min(...ys)))
+    };
+
+    const off = document.createElement('canvas');
+    off.width = bounds.w;
+    off.height = bounds.h;
+    const offCtx = off.getContext('2d');
+
+    createLassoPath(offCtx, bounds.x, bounds.y);
+    offCtx.save();
+    offCtx.clip();
+    offCtx.drawImage(canvas, -bounds.x, -bounds.y);
+    offCtx.restore();
+
+    const img = new Image();
+    img.onload = () => {
+      saveState();
+
+      ctx.save();
+      createLassoPath(ctx, 0, 0);
+      ctx.clip();
+      ctx.clearRect(bounds.x, bounds.y, bounds.w, bounds.h);
+      ctx.restore();
+
+      baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+      overlayObj = { img, x: bounds.x, y: bounds.y, w: bounds.w, h: bounds.h, angle: 0 };
+      toolSelect.value = 'transform';
+      currentTool = 'transform';
+      shapeOptionsDiv.style.display = 'none';
+      cropOverlay.style.display = 'none';
+      updateTransformBox();
+      renderOverlay();
+    };
+    img.src = off.toDataURL('image/png');
+
+    resetLasso();
   }
 
   // Overlay rendering: base + transformed overlay (prevents duplicates)
@@ -512,56 +610,85 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Selection tool
-  canvas.addEventListener('mousedown', (e) => {
-    if (currentTool !== 'select') return;
-    const r = canvas.getBoundingClientRect();
-    selectStartX = e.clientX - r.left;
-    selectStartY = e.clientY - r.top;
-    isSelecting = true;
-    hideSelection();
+    
+  if (currentTool !== 'select' && currentTool !== 'lasso') return;
+
+    const { x, y } = canvasPoint(e);
+
+    if (currentTool === 'select') {
+      selectStartX = x;
+      selectStartY = y;
+      isSelecting = true;
+      hideSelection();
+      resetLasso();
+    } else if (currentTool === 'lasso') {
+      isLassoing = true;
+      lassoPoints = [{ x, y }];
+      hideSelection();
+      drawLassoOverlay(lassoPoints);
+    }
   });
   canvas.addEventListener('mousemove', (e) => {
-    if (!isSelecting || currentTool !== 'select') return;
-    const r = canvas.getBoundingClientRect();
-    const x = e.clientX - r.left;
-    const y = e.clientY - r.top;
-    const x1 = Math.min(selectStartX, x);
-    const y1 = Math.min(selectStartY, y);
-    const w = Math.abs(x - selectStartX);
-    const h = Math.abs(y - selectStartY);
-    selectRect = { x: x1, y: y1, w, h };
-    showSelection(x1, y1, w, h);
+    if (currentTool === 'select' && isSelecting) {
+      const { x, y } = canvasPoint(e);
+      const x1 = Math.min(selectStartX, x);
+      const y1 = Math.min(selectStartY, y);
+      const w = Math.abs(x - selectStartX);
+      const h = Math.abs(y - selectStartY);
+      selectRect = { x: x1, y: y1, w, h };
+      showSelection(x1, y1, w, h);
+    }
+
+    if (currentTool === 'lasso' && isLassoing) {
+      const { x, y } = canvasPoint(e);
+      const last = lassoPoints[lassoPoints.length - 1];
+      const dx = x - last.x;
+      const dy = y - last.y;
+      if (Math.hypot(dx, dy) > 1) lassoPoints.push({ x, y });
+      drawLassoOverlay(lassoPoints);
+    }
   });
-  canvas.addEventListener('mouseup', () => {
-    if (!isSelecting || currentTool !== 'select' || !selectRect) return;
-    isSelecting = false;
-    hideSelection();
 
-    if (selectRect.w < 1 || selectRect.h < 1) return;
+  canvas.addEventListener('mouseup', (e) => {
+    if (currentTool === 'select') {
+      if (!isSelecting || !selectRect) return;
+      isSelecting = false;
+      hideSelection();
+      
+      if (selectRect.w < 1 || selectRect.h < 1) return;
 
-    // Extract selected region into an overlay image
-    const off = document.createElement('canvas');
-    off.width = selectRect.w; off.height = selectRect.h;
-    const offCtx = off.getContext('2d');
-    offCtx.drawImage(canvas, selectRect.x, selectRect.y, selectRect.w, selectRect.h, 0, 0, selectRect.w, selectRect.h);
+      // Extract selected region into an overlay image
+      const off = document.createElement('canvas');
+      off.width = selectRect.w; off.height = selectRect.h;
+      const offCtx = off.getContext('2d');
+      offCtx.drawImage(canvas, selectRect.x, selectRect.y, selectRect.w, selectRect.h, 0, 0, selectRect.w, selectRect.h);
+      const img = new Image();
+      img.onload = () => {
+        saveState();
 
-    const img = new Image();
-    img.onload = () => {
-      saveState();
+        // Erase selected area from base canvas and snapshot base
+        ctx.clearRect(selectRect.x, selectRect.y, selectRect.w, selectRect.h);
+        baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-      // Erase selected area from base canvas and snapshot base
-      ctx.clearRect(selectRect.x, selectRect.y, selectRect.w, selectRect.h);
-      baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        // Create overlay from selection
+        overlayObj = { img, x: selectRect.x, y: selectRect.y, w: selectRect.w, h: selectRect.h, angle: 0 };
 
-      // Create overlay from selection
-      overlayObj = { img, x: selectRect.x, y: selectRect.y, w: selectRect.w, h: selectRect.h, angle: 0 };
-
-      // Switch to transform automatically
-      toolSelect.value = 'transform';
-      currentTool = 'transform';
-      updateTransformBox();
-      renderOverlay();
-      selectRect = null;
+        // Switch to transform automatically
+        toolSelect.value = 'transform';
+        currentTool = 'transform';
+        updateTransformBox();
+        renderOverlay();
+        selectRect = null;
+      };
+      
+      img.src = off.toDataURL('image/png');
+    } else if (currentTool === 'lasso' && isLassoing) {
+      isLassoing = false;
+      const { x, y } = canvasPoint(e);
+      lassoPoints.push({ x, y });
+      drawLassoOverlay(lassoPoints);
+      finalizeLassoSelection();
+    }
     };
     img.src = off.toDataURL('image/png');
   });
@@ -733,18 +860,18 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     undoStack = []; redoStack = [];
     overlayObj = null; baseImageData = null; selectRect = null;
-    hideSelection(); updateTransformBox();
+    hideSelection(); resetLasso(); updateTransformBox();
   });
   clearCanvasButton.addEventListener('click', () => {
     ctx.globalCompositeOperation = 'source-over';
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     undoStack = []; redoStack = [];
     overlayObj = null; baseImageData = null; selectRect = null;
-    hideSelection(); updateTransformBox();
+    hideSelection(); resetLasso(); updateTransformBox();
   });
   undoCanvasButton.addEventListener('click', undo);
   redoCanvasButton.addEventListener('click', redo);
-  function getExportBackgroundFill(format) {
+ function getExportBackgroundFill(format) {
     if (format === 'png-transparent') return null;
 
     const selectedPattern = backgroundPatternSelect ? backgroundPatternSelect.value : 'plain';
@@ -802,11 +929,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   downloadCanvasButton.addEventListener('click', () => {
-    if (overlayObj && baseImageData) renderOverlay(); // Flatten for export
     const format = downloadFormatSelect ? downloadFormatSelect.value : 'png';
     const link = document.createElement('a');
-    link.download = 'DrawNow_art.png';
-    link.href = canvas.toDataURL('image/png');
     link.download = getDownloadFilename(format);
     link.href = getDownloadDataUrl(format);
     link.click();
@@ -850,6 +974,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Hide selection overlay when leaving select
     if (currentTool !== 'select') hideSelection();
+    if (currentTool !== 'lasso') resetLasso();
 
     // Transform box behavior
     if (currentTool === 'transform') {
