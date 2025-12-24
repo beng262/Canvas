@@ -33,7 +33,7 @@
       <div id="recentColors"></div>
     </div>
 
-    <!-- Tool selector -->
+      <!-- Tool selector -->
     <div class="toolbar-item">
       <label for="tool">Tool:</label>
       <select id="tool">
@@ -42,6 +42,7 @@
         <option value="fill">Fill</option>
         <option value="shape">Shapes</option>
         <option value="select">Select Area</option>
+        <option value="lasso">Lasso Select</option>
         <option value="transform">Transform Image</option>
         <option value="cropImage">Crop Image</option>
         <option value="text">Text</option>
@@ -67,28 +68,7 @@
         <option value="textured">Textured</option>
         <option value="pattern">Pattern</option>
         <option value="airbrush">Airbrush</option>
-        <option value="star">Star</option>
-        <option value="heart">Heart</option>
-        <option value="zigzag">Zigzag</option>
-        <option value="scatter">Scatter</option>
-        <option value="crayon">Crayon</option>
-      </select>
-    </div>
-
-    <!-- Shape options (shown only when tool is "shape") -->
-    <div class="toolbar-item" id="shapeOptions" style="display:none;">
-      <label for="shapeType">Shape:</label>
-      <select id="shapeType">
-        <option value="line">Straight Line</option>
-        <option value="dottedLine">Dotted Line</option>
-        <option value="rectangle">Rectangle</option>
-        <option value="dottedRectangle">Dotted Rectangle</option>
-        <option value="circle">Circle</option>
-        <option value="ellipse">Ellipse</option>
-        <option value="oval">Oval</option>
-        <option value="star">Star</option>
-        <option value="heart">Heart</option>
-      </select>
+@@ -92,67 +93,77 @@
     </div>
 
     <!-- Canvas Background Options -->
@@ -155,6 +135,9 @@
 
     <!-- Selection overlay -->
     <div id="selectionOverlay" class="selection-overlay" style="display:none;"></div>
+
+    <!-- Lasso overlay -->
+    <canvas id="lassoOverlay" class="lasso-overlay" width="800" height="600"></canvas>
 
     <!-- Crop overlay -->
     <div id="cropOverlay" class="crop-overlay" style="display:none;"></div>
