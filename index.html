@@ -33,7 +33,7 @@
       <div id="recentColors"></div>
     </div>
 
-      <!-- Tool selector -->
+    <!-- Tool selector -->
     <div class="toolbar-item">
       <label for="tool">Tool:</label>
       <select id="tool">
@@ -49,7 +49,7 @@
       </select>
     </div>
 
-    <!-- Brush types – 20 unique brushes -->
+    <!-- Brush types -->
     <div class="toolbar-item">
       <label for="brushType">Brush Type:</label>
       <select id="brushType">
@@ -76,7 +76,7 @@
       </select>
     </div>
 
-    <!-- Shape options (shown only when tool is "shape") -->
+    <!-- Shape options -->
     <div class="toolbar-item" id="shapeOptions" style="display:none;">
       <label for="shapeType">Shape:</label>
       <select id="shapeType">
@@ -115,6 +115,7 @@
       <button id="clearCanvas">Clear Canvas</button>
       <button id="undoCanvas">⟲ Undo</button>
       <button id="redoCanvas">⟳ Redo</button>
+
       <label for="downloadFormat" class="sr-only">Download format</label>
       <select id="downloadFormat">
         <option value="png">PNG</option>
@@ -122,14 +123,17 @@
         <option value="jpg">JPG</option>
         <option value="jpeg">JPEG</option>
       </select>
+
       <button id="downloadCanvas">Download</button>
       <button id="flipCanvas">Flip Canvas</button>
+
       <button id="addImageButton">Add Image</button>
       <input type="file" id="addImageInput" accept="image/*" style="display:none;">
+
       <button id="darkModeToggle" aria-pressed="false" title="Switch to dark mode">☀️</button>
     </div>
 
-    <!-- Symmetry mode (toggle with shortcut Y) -->
+    <!-- Symmetry mode -->
     <div class="toolbar-item">
       <label>
         <input type="checkbox" id="symmetry">
@@ -142,7 +146,7 @@
   <div class="canvas-container plain" id="canvasContainer">
     <canvas id="drawingCanvas" width="800" height="600"></canvas>
 
-    <!-- Transform box overlay (for images or selected region) -->
+    <!-- Transform box overlay -->
     <div id="transformBox" class="transform-box" style="display:none;" role="group" aria-label="Transform handles">
       <div class="handle handle-nw" data-handle="nw"></div>
       <div class="handle handle-n"  data-handle="n"></div>
