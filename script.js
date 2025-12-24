@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const clearCanvasButton = document.getElementById('clearCanvas');
   const undoCanvasButton = document.getElementById('undoCanvas');
   const redoCanvasButton = document.getElementById('redoCanvas');
+  const downloadFormatSelect = document.getElementById('downloadFormat');
   const flipCanvasButton = document.getElementById('flipCanvas');
   const downloadCanvasButton = document.getElementById('downloadCanvas');
   const darkModeToggle = document.getElementById('darkModeToggle');
@@ -32,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const shapeTypeSelect = document.getElementById('shapeType');
   const symmetryCheckbox = document.getElementById('symmetry');
   const canvasContainer = document.getElementById('canvasContainer');
-
+  
   // Overlays & transform
   const selectionOverlay = document.getElementById('selectionOverlay');
   const cropOverlay = document.getElementById('cropOverlay');
@@ -743,11 +744,71 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   undoCanvasButton.addEventListener('click', undo);
   redoCanvasButton.addEventListener('click', redo);
+  function getExportBackgroundFill(format) {
+    if (format === 'png-transparent') return null;
+
+    const selectedPattern = backgroundPatternSelect ? backgroundPatternSelect.value : 'plain';
+
+    if (selectedPattern === 'dark') return '#000000';
+    if (selectedPattern === 'plain') return '#ffffff';
+
+    const computedColor = getComputedStyle(canvasContainer).backgroundColor;
+    if (computedColor && computedColor !== 'rgba(0, 0, 0, 0)' && computedColor !== 'transparent') {
+      return computedColor;
+    }
+
+    return '#ffffff';
+  }
+
+  function buildExportCanvas(fillColor) {
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = canvas.width;
+    exportCanvas.height = canvas.height;
+    const exportCtx = exportCanvas.getContext('2d');
+
+    if (fillColor) {
+      exportCtx.fillStyle = fillColor;
+      exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+    }
+
+    if (overlayObj && baseImageData) {
+      exportCtx.putImageData(baseImageData, 0, 0);
+      exportCtx.save();
+      exportCtx.translate(overlayObj.x, overlayObj.y);
+      exportCtx.rotate(overlayObj.angle || 0);
+      exportCtx.drawImage(overlayObj.img, 0, 0, overlayObj.w, overlayObj.h);
+      exportCtx.restore();
+    } else {
+      exportCtx.drawImage(canvas, 0, 0);
+    }
+
+    return exportCanvas;
+  }
+
+  function getDownloadDataUrl(format) {
+    const fillColor = getExportBackgroundFill(format);
+    const exportCanvas = buildExportCanvas(fillColor);
+
+    if (format === 'jpg' || format === 'jpeg') {
+      return exportCanvas.toDataURL('image/jpeg', 0.92);
+    }
+
+    return exportCanvas.toDataURL('image/png');
+  }
+
+  function getDownloadFilename(format) {
+    const ext = format === 'png-transparent' ? 'png' : format;
+    return `DrawNow_art.${ext}`;
+  }
+
   downloadCanvasButton.addEventListener('click', () => {
     if (overlayObj && baseImageData) renderOverlay(); // Flatten for export
+    const format = downloadFormatSelect ? downloadFormatSelect.value : 'png';
     const link = document.createElement('a');
     link.download = 'DrawNow_art.png';
     link.href = canvas.toDataURL('image/png');
+    link.download = getDownloadFilename(format);
+    link.href = getDownloadDataUrl(format);
     link.click();
   });
 
