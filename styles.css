@@ -1,15 +1,12 @@
-/* =========================
-   Global & Gradient Background
-========================= */
+/* Global */
 body {
   margin: 0;
   padding: 0;
-  font-family: 'Arial', sans-serif;
+  font-family: Arial, sans-serif;
   background: linear-gradient(90deg, #A3D3FF, #FFB2F7, #C3B9FF);
   color: #A3D3FF;
 }
 
-/* Screen-reader only */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -22,22 +19,11 @@ body {
   border: 0;
 }
 
-/* =========================
-   Header
-========================= */
-header {
-  text-align: center;
-  padding: 20px;
-}
-header h1 {
-  margin: 0;
-  color: white;
-  font-size: 3em;
-}
+/* Header */
+header { text-align: center; padding: 20px; }
+header h1 { margin: 0; color: white; font-size: 3em; }
 
-/* =========================
-   Toolbar
-========================= */
+/* Toolbar */
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -46,18 +32,21 @@ header h1 {
   padding: 10px;
   border-radius: 8px;
   margin: 10px auto;
-  max-width: 950px;
+  max-width: 1100px;
+  gap: 8px;
 }
 
 .toolbar-item {
   margin: 5px 10px;
   font-weight: bold;
   color: #A3D3FF;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.toolbar-item label {
-  margin-right: 5px;
-}
+.toolbar-item label { margin-right: 5px; }
 
 button {
   background-color: #FFB2F7;
@@ -68,29 +57,65 @@ button {
   cursor: pointer;
 }
 
-button:hover {
-  background-color: #e699f0;
-}
+button:hover { background-color: #e699f0; }
 
-/* =========================
-   Recent Colors
-========================= */
-#recentColors {
-  margin-top: 5px;
-}
-
+/* Recent Colors */
+#recentColors { margin-top: 5px; display: flex; gap: 6px; flex-wrap: wrap; }
 .color-swatch {
   display: inline-block;
   width: 20px;
   height: 20px;
-  margin-right: 3px;
   border: 1px solid #C3B9FF;
   cursor: pointer;
+  border-radius: 4px;
 }
 
-/* =========================
-   Canvas Container
-========================= */
+/* Picker */
+.picker-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border: 1px solid rgba(163, 211, 255, 0.6);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.75);
+}
+
+#colorPickerCanvas {
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.12);
+}
+
+/* Layers box */
+.layers-box {
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 210px;
+  padding: 8px;
+  border: 1px solid rgba(163, 211, 255, 0.4);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.6);
+}
+
+.layers-title { font-size: 14px; font-weight: 800; color: #7aaee6; }
+
+.layer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: #7aaee6;
+}
+
+.layer-row .vis {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-weight: 700;
+}
+
+/* Canvas container */
 .canvas-container {
   margin: 20px auto;
   width: 800px;
@@ -99,100 +124,75 @@ button:hover {
   position: relative;
   background-size: cover;
   background-position: center;
-  overflow: visible; /* allow rotate handle outside */
+  overflow: visible;
 }
 
-/* Predefined Backgrounds */
-.canvas-container.plain { background-color: #ffffff; }
-.canvas-container.dark  { background-color: #000000; }
-.canvas-container.notebook {
-  background: repeating-linear-gradient(
-    0deg,
-    #ffffff,
-    #ffffff 23px,
-    #d1d1d1 24px
-  );
-}
+/* Backgrounds */
+.canvas-container.plain { background-color: #fff; }
+.canvas-container.dark  { background-color: #000; }
+.canvas-container.notebook { background: repeating-linear-gradient(0deg, #fff, #fff 23px, #d1d1d1 24px); }
 .canvas-container.pastel {
-  background:
-    linear-gradient(45deg, #A3D3FF 25%, transparent 25%) -50px 0,
-    linear-gradient(-45deg, #FFB2F7 25%, transparent 25%) -50px 0,
-    linear-gradient(45deg, transparent 75%, #C3B9FF 75%),
-    linear-gradient(-45deg, transparent 75%, #C3B9FF 75%);
+  background: linear-gradient(45deg, #A3D3FF 25%, transparent 25%) -50px 0,
+              linear-gradient(-45deg, #FFB2F7 25%, transparent 25%) -50px 0,
+              linear-gradient(45deg, transparent 75%, #C3B9FF 75%),
+              linear-gradient(-45deg, transparent 75%, #C3B9FF 75%);
   background-size: 100px 100px;
 }
-.canvas-container.fabric {
-  background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/fabric%20copy.png');
-}
-.canvas-container.paper {
-  background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/10366807.jpg');
-}
-.canvas-container.grid {
-  background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/sl_072622_51930_13.jpg');
-}
-.canvas-container.oldpaper {
-  background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/37416bdfbbe287d1f1cd44fa8dfd3159.jpg');
-}
-.canvas-container.wood {
-  background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/wood.jpg');
-}
-.canvas-container.marble {
-  background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/marble%20copy.png');
-}
+.canvas-container.fabric { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/fabric%20copy.png'); }
+.canvas-container.paper  { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/10366807.jpg'); }
+.canvas-container.grid   { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/sl_072622_51930_13.jpg'); }
+.canvas-container.oldpaper { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/37416bdfbbe287d1f1cd44fa8dfd3159.jpg'); }
+.canvas-container.wood   { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/wood.jpg'); }
+.canvas-container.marble { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/marble%20copy.png'); }
 
-/* =========================
-   CANVAS & OVERLAYS (CRITICAL FIX)
-========================= */
-
-/* Base drawing canvas – MUST receive pointer events */
-#drawingCanvas {
+/* Layer canvases */
+#layerCanvas0, #layerCanvas1, #layerCanvas2 {
   position: absolute;
   left: 0;
   top: 0;
   z-index: 1;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
-/* Lasso overlay canvas – visual only */
-#lassoOverlay {
+/* Lasso overlay */
+.lasso-overlay {
   position: absolute;
   left: 0;
   top: 0;
-  z-index: 2;
-  pointer-events: none; /* IMPORTANT */
+  z-index: 3;
+  pointer-events: none;
 }
 
-/* Selection overlay – visual only */
+/* Selection overlay */
 .selection-overlay {
   position: absolute;
   border: 1.5px dashed #22c55e;
   box-sizing: border-box;
-  z-index: 3;
+  z-index: 4;
   background: rgba(34, 197, 94, 0.12);
-  pointer-events: none; /* IMPORTANT */
+  pointer-events: none;
 }
 
-/* Crop overlay – visual only */
+/* Crop overlay */
 .crop-overlay {
   position: absolute;
   border: 2px dashed #ffcc00;
   pointer-events: none;
-  z-index: 4;
+  z-index: 5;
 }
 
-/* Transform box – MUST receive pointer events */
+/* Transform box */
 .transform-box {
   position: absolute;
   border: 1.5px solid #3b82f6;
   box-sizing: border-box;
-  z-index: 5;
+  z-index: 6;
   transform-origin: top left;
   touch-action: none;
-  pointer-events: auto; /* IMPORTANT */
-  background: rgba(0, 0, 0, 0.001);
+  pointer-events: auto;
+  background: rgba(0,0,0,0.001);
 }
 
-/* Transform handles */
 .transform-box .handle {
   position: absolute;
   width: 12px;
@@ -212,7 +212,6 @@ button:hover {
 .transform-box .handle-sw { left: -8px; bottom: -8px; cursor: nesw-resize; }
 .transform-box .handle-w  { left: -8px; top: calc(50% - 6px); cursor: ew-resize; }
 
-/* Rotate handle */
 .rotate-handle {
   position: absolute;
   left: calc(50% - 8px);
@@ -235,44 +234,21 @@ button:hover {
   background: #ef4444;
 }
 
-/* =========================
-   Dark Mode Overrides
-========================= */
+/* Dark mode */
 body.dark {
   background: linear-gradient(90deg, #0b1020, #1a1020, #121427);
   color: #e5e7eb;
 }
 
-body.dark header h1 {
-  color: #e5e7eb;
-}
-
-body.dark .toolbar {
-  background-color: rgba(17, 24, 39, 0.9);
-}
-
-body.dark .toolbar-item {
-  color: #d1d5db;
-}
-
-body.dark button {
-  background-color: #8b5cf6;
-  color: #ffffff;
-}
-
-body.dark button:hover {
-  background-color: #7c3aed;
-}
-
-body.dark .color-swatch {
-  border-color: #4b5563;
-}
-
-body.dark .canvas-container {
-  border-color: #4b5563;
-}
-
-/* Important: plain canvas must stay white in dark mode */
-body.dark .canvas-container.plain {
-  background-color: #ffffff;
-}
+body.dark header h1 { color: #e5e7eb; }
+body.dark .toolbar { background-color: rgba(17, 24, 39, 0.9); }
+body.dark .toolbar-item { color: #d1d5db; }
+body.dark button { background-color: #8b5cf6; color: #ffffff; }
+body.dark button:hover { background-color: #7c3aed; }
+body.dark .color-swatch { border-color: #4b5563; }
+body.dark .canvas-container { border-color: #4b5563; }
+body.dark .canvas-container.plain { background-color: #ffffff; }
+body.dark .layers-box { background: rgba(17,24,39,0.6); border-color: rgba(75,85,99,0.8); }
+body.dark .layers-title { color: #c7d2fe; }
+body.dark .layer-row { color: #e5e7eb; }
+body.dark .picker-box { background: rgba(17,24,39,0.6); border-color: rgba(75,85,99,0.8); }
