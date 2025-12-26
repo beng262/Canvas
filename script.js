@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // =========================
+
   // DOM + Canvas
-  // =========================
   const canvas = document.getElementById('drawingCanvas');
   if (!canvas) return;
 
@@ -17,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const backgroundPatternSelect = document.getElementById('backgroundPattern');
   const recentColorsDiv = document.getElementById('recentColors');
 
-  const newCanvasButton = document.getElementById('newCanvas');
+  // NOTE: newCanvas removed by user request; do not depend on it
   const clearCanvasButton = document.getElementById('clearCanvas');
   const undoCanvasButton = document.getElementById('undoCanvas');
   const redoCanvasButton = document.getElementById('redoCanvas');
@@ -52,9 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
     lassoOverlay.height = canvas.height;
   }
 
-  // =========================
+
   // State
-  // =========================
   let currentTool = toolSelect ? toolSelect.value : 'pen';
   let currentBrush = brushTypeSelect ? brushTypeSelect.value : 'round';
 
@@ -99,9 +97,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let redoStack = [];
   const MAX_HISTORY = 50;
 
-  // =========================
+
   // Helpers
-  // =========================
   function canvasPoint(evt) {
     const r = canvas.getBoundingClientRect();
     return { x: evt.clientX - r.left, y: evt.clientY - r.top };
@@ -132,9 +129,8 @@ document.addEventListener('DOMContentLoaded', () => {
     return [r, g, b, a];
   }
 
-  // =========================
+  
   // Theme
-  // =========================
   const THEME_KEY = 'drawnow-theme';
   function applyTheme(mode) {
     const isDark = mode === 'dark';
@@ -160,17 +156,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   initTheme();
 
-  // =========================
-  // History
-  // =========================
-  function saveState() {
-    redoStack = [];
-    try {
-      undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
-      if (undoStack.length > MAX_HISTORY) undoStack.shift();
-    } catch (e) {}
-  }
 
+  // Overlays UI
   function hideSelection() {
     if (!selectionOverlay) return;
     selectionOverlay.style.display = 'none';
@@ -245,21 +232,14 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.restore();
   }
 
-  function commitOverlay() {
-    if (!overlayObj || !baseImageData) return;
-    saveState();
-    renderOverlay();
-    baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    overlayObj = null;
-    updateTransformBox();
-  }
-
-  function flattenOverlayIfAny() {
-    if (!overlayObj || !baseImageData) return;
-    renderOverlay();
-    baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    overlayObj = null;
-    updateTransformBox();
+  
+  // History
+  function saveState() {
+    redoStack = [];
+    try {
+      undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+      if (undoStack.length > MAX_HISTORY) undoStack.shift();
+    } catch (e) {}
   }
 
   function clearActiveOverlayUI() {
@@ -291,9 +271,27 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {}
   }
 
-  // =========================
-  // Brushes
-  // =========================
+
+  // Overlay commit helpers
+  function commitOverlay() {
+    if (!overlayObj || !baseImageData) return;
+    saveState();
+    renderOverlay();
+    baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    overlayObj = null;
+    updateTransformBox();
+  }
+
+  function flattenOverlayIfAny() {
+    if (!overlayObj || !baseImageData) return;
+    renderOverlay();
+    baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    overlayObj = null;
+    updateTransformBox();
+  }
+
+  
+  // Brushes + Shapes
   function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
     let rot = (Math.PI / 2) * 3;
     const step = Math.PI / spikes;
@@ -463,9 +461,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // =========================
+
   // OPTIMIZED Fill (tolerant + 1px edge expand)
-  // =========================
   function colorDistSq(r1, g1, b1, a1, r2, g2, b2, a2) {
     const dr = r1 - r2, dg = g1 - g2, db = b1 - b2, da = a1 - a2;
     return dr * dr + dg * dg + db * db + da * da;
@@ -494,8 +491,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const imageData = ctx.getImageData(0, 0, width, height);
     const data = imageData.data;
 
+    
     // Tuning knobs
-    const TOL = 28;         // increase if you still see gaps
+    const TOL = 28;       
     const TOL_EDGE = 40;    // slightly higher for edge expand
     const EDGE_EXPAND = 1;  // "under outline" by ~1px
     const alphaMin = 0;
@@ -566,9 +564,8 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.putImageData(imageData, 0, 0);
   }
 
-  // =========================
+
   // Text tool
-  // =========================
   function addTextAt(x, y) {
     flattenOverlayIfAny();
 
@@ -596,9 +593,8 @@ document.addEventListener('DOMContentLoaded', () => {
     baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   }
 
-  // =========================
+
   // Clipboard overlay
-  // =========================
   function copyOverlayToClipboard() {
     if (!overlayObj) return;
     const off = document.createElement('canvas');
@@ -636,9 +632,8 @@ document.addEventListener('DOMContentLoaded', () => {
     img.src = clipboardObj.dataUrl;
   }
 
-  // =========================
+
   // Flip canvas
-  // =========================
   function flipCanvasHorizontal() {
     saveState();
     flattenOverlayIfAny();
@@ -657,9 +652,8 @@ document.addEventListener('DOMContentLoaded', () => {
     baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   }
 
-  // =========================
+  
   // Transform interactions
-  // =========================
   if (transformBox) {
     transformBox.addEventListener('pointerdown', (e) => {
       if (!overlayObj || currentTool !== 'transform') return;
@@ -758,9 +752,8 @@ document.addEventListener('DOMContentLoaded', () => {
     transformBox.addEventListener('dblclick', () => commitOverlay());
   }
 
-  // =========================
+  
   // Crop tool (on overlay only, non-rotated)
-  // =========================
   if (cropOverlay) cropOverlay.style.pointerEvents = 'none';
 
   function showCropOverlay(r) {
@@ -782,7 +775,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function applyCrop() {
     if (!overlayObj || !cropRect) return;
 
-    // Only supports non-rotated
     if (Math.abs(overlayObj.angle || 0) > 0.0001) {
       alert('Crop supports only non-rotated image/selection. Set rotation to 0 first.');
       return;
@@ -831,14 +823,29 @@ document.addEventListener('DOMContentLoaded', () => {
     croppedImg.src = off.toDataURL('image/png');
   }
 
-  // =========================
+  
+  // Clear Canvas 
+  function clearCanvasUndoable() {
+    // Make sure we don’t leave a floating overlay
+    if (overlayObj && baseImageData) {
+      commitOverlay(); // commitOverlay also calls saveState, but that's fine
+    }
+
+    saveState();
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    clearActiveOverlayUI();
+  }
+
+
   // Unified Canvas Input Handlers
-  // (prevents conflicts / ensures tools work)
-  // =========================
   canvas.addEventListener('mousedown', (e) => {
     const p = canvasPoint(e);
 
-    // ensure overlay stays visible during transform/crop
+    // transform handled by transformBox
     if (currentTool === 'transform') return;
 
     if (currentTool === 'fill') {
@@ -888,10 +895,10 @@ document.addEventListener('DOMContentLoaded', () => {
       cropRect = null;
       return;
     }
+    
 
     // Drawing tools (pen/eraser)
     if (currentTool === 'pen' || currentTool === 'eraser') {
-      // commit overlay when starting drawing
       if (overlayObj && currentTool !== 'transform') commitOverlay();
 
       saveState();
@@ -907,6 +914,7 @@ document.addEventListener('DOMContentLoaded', () => {
   canvas.addEventListener('mousemove', (e) => {
     const p = canvasPoint(e);
 
+    
     // Shape preview
     if (currentTool === 'shape' && shapeActive && shapeSaved) {
       ctx.putImageData(shapeSaved, 0, 0);
@@ -946,6 +954,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       return;
     }
+    
 
     // Rect select preview
     if (currentTool === 'select' && isSelecting) {
@@ -958,6 +967,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    
     // Lasso preview
     if (currentTool === 'lasso' && isLassoing) {
       const last = lassoPoints[lassoPoints.length - 1];
@@ -967,6 +977,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       return;
     }
+    
 
     // Crop preview
     if (currentTool === 'cropImage' && isCropping) {
@@ -979,6 +990,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    
     // Drawing
     if ((currentTool === 'pen' || currentTool === 'eraser') && isDrawing) {
       const size = parseInt(brushSizeInput.value, 10) || 1;
@@ -987,7 +999,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       ctx.globalCompositeOperation = (currentTool === 'eraser') ? 'destination-out' : 'source-over';
 
-      // symmetry option
       const drawOne = (x0, y0, x1, y1) => {
         ctx.beginPath();
         ctx.moveTo(x0, y0);
@@ -1008,17 +1019,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   canvas.addEventListener('mouseup', () => {
-    // end drawing
     isDrawing = false;
 
-    // finish shape
     if (currentTool === 'shape') {
       shapeActive = false;
       shapeSaved = null;
       return;
     }
+    
 
-    // finish selection -> make overlay
+    // Finish selection -> make overlay
     if (currentTool === 'select') {
       if (!isSelecting) return;
       isSelecting = false;
@@ -1049,8 +1059,9 @@ document.addEventListener('DOMContentLoaded', () => {
       img.src = off.toDataURL('image/png');
       return;
     }
+    
 
-    // finish lasso -> make overlay
+    // Finish lasso -> make overlay
     if (currentTool === 'lasso') {
       if (!isLassoing) return;
       isLassoing = false;
@@ -1060,7 +1071,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // bounds
       const xs = lassoPoints.map(p => p.x);
       const ys = lassoPoints.map(p => p.y);
       const bounds = {
@@ -1075,7 +1085,6 @@ document.addEventListener('DOMContentLoaded', () => {
       off.height = bounds.h;
       const offCtx = off.getContext('2d');
 
-      // clip lasso path
       offCtx.beginPath();
       lassoPoints.forEach((pt, i) => {
         const x = pt.x - bounds.x;
@@ -1093,7 +1102,6 @@ document.addEventListener('DOMContentLoaded', () => {
       img.onload = () => {
         saveState();
 
-        // clear lasso region from main canvas
         ctx.save();
         ctx.beginPath();
         lassoPoints.forEach((pt, i) => {
@@ -1119,7 +1127,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // finish crop
+    
+    // Finish crop
     if (currentTool === 'cropImage') {
       if (!isCropping) return;
       isCropping = false;
@@ -1135,9 +1144,8 @@ document.addEventListener('DOMContentLoaded', () => {
     isDrawing = false;
   });
 
-  // =========================
+  
   // UI wiring
-  // =========================
   if (brushTypeSelect) {
     brushTypeSelect.addEventListener('change', () => {
       currentBrush = brushTypeSelect.value;
@@ -1155,6 +1163,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  
   // Recent colors
   let recentColors = [];
   function addRecentColor(color) {
@@ -1180,30 +1189,26 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  
   // Tool change
   if (toolSelect) {
     toolSelect.addEventListener('change', () => {
       const nextTool = toolSelect.value;
 
-      // show/hide shapes
       if (shapeOptionsDiv) shapeOptionsDiv.style.display = nextTool === 'shape' ? 'inline-block' : 'none';
 
-      // leaving transform commits
       if (currentTool === 'transform' && nextTool !== 'transform' && nextTool !== 'cropImage') {
         commitOverlay();
       }
 
       currentTool = nextTool;
 
-      // crop overlay visibility
       if (cropOverlay) cropOverlay.style.display = (currentTool === 'cropImage') ? 'block' : 'none';
       if (currentTool !== 'cropImage') hideCropOverlay();
 
-      // cleanup selection visuals when leaving
       if (currentTool !== 'select') hideSelection();
       if (currentTool !== 'lasso') resetLasso();
 
-      // transform box
       if (currentTool === 'transform') {
         if (!baseImageData) baseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         updateTransformBox();
@@ -1215,6 +1220,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  
   // Add Image
   if (addImageButton && addImageInput) {
     addImageButton.addEventListener('click', () => addImageInput.click());
@@ -1250,27 +1256,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  
   // Flip Canvas
   if (flipCanvasButton) {
     flipCanvasButton.addEventListener('click', flipCanvasHorizontal);
   }
 
+  
   // Undo/Redo buttons
   if (undoCanvasButton) undoCanvasButton.addEventListener('click', undo);
   if (redoCanvasButton) redoCanvasButton.addEventListener('click', redo);
 
-  // New/Clear
-  function resetAll() {
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    undoStack = [];
-    redoStack = [];
-    clearActiveOverlayUI();
-  }
-  if (newCanvasButton) newCanvasButton.addEventListener('click', resetAll);
-  if (clearCanvasButton) clearCanvasButton.addEventListener('click', resetAll);
+  
+  // Clear Canvas 
+  if (clearCanvasButton) clearCanvasButton.addEventListener('click', clearCanvasUndoable);
 
+  
   // Download
   function getExportBackgroundFill(format) {
     if (format === 'png-transparent') return null;
@@ -1295,7 +1296,6 @@ document.addEventListener('DOMContentLoaded', () => {
       exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
     }
 
-    // ensure overlay is included in export
     if (overlayObj && baseImageData) {
       exportCtx.putImageData(baseImageData, 0, 0);
       exportCtx.save();
@@ -1331,9 +1331,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // =========================
+  
   // Keyboard shortcuts
-  // =========================
   document.addEventListener('keydown', (e) => {
     const key = (e.key || '').toLowerCase();
     const ctrlOrCmd = e.ctrlKey || e.metaKey;
@@ -1346,7 +1345,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const prevent = () => { e.preventDefault(); e.stopPropagation(); };
 
-    // Undo / Redo
     if (key === 'z' && !e.shiftKey) {
       if (!isTypingTarget) { prevent(); undo(); }
       return;
@@ -1356,7 +1354,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Copy/Cut/Paste overlay
     if (key === 'c') {
       if (!isTypingTarget) { prevent(); copyOverlayToClipboard(); }
       return;
@@ -1370,13 +1367,11 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Download
     if (key === 's') {
       if (!isTypingTarget && downloadCanvasButton) { prevent(); downloadCanvasButton.click(); }
       return;
     }
 
-    // Enter commits overlay
     if (key === 'enter') {
       if (!isTypingTarget && currentTool === 'transform' && overlayObj) {
         prevent();
@@ -1384,7 +1379,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // Escape cancels temp states
     if (key === 'escape') {
       prevent();
       isSelecting = false;
@@ -1398,9 +1392,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // =========================
+  
   // Initial UI state
-  // =========================
   if (shapeOptionsDiv) shapeOptionsDiv.style.display = (currentTool === 'shape') ? 'inline-block' : 'none';
   updateTransformBox();
 });
+
+
+
+
+
+
