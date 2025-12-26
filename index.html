@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>DrawNow!</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <!-- Header -->
@@ -14,26 +14,43 @@
 
   <!-- Toolbar -->
   <div class="toolbar">
-    <!-- Brush size & opacity -->
+    <!-- Brush size -->
     <div class="toolbar-item">
       <label for="brushSize">Brush Size:</label>
-      <input type="range" id="brushSize" min="1" max="50" value="10">
+      <input type="range" id="brushSize" min="1" max="50" value="10" />
       <span id="brushSizeValue">10</span>
     </div>
+
+    <!-- Opacity -->
     <div class="toolbar-item">
       <label for="opacity">Opacity:</label>
-      <input type="range" id="opacity" min="0" max="100" value="100">
+      <input type="range" id="opacity" min="0" max="100" value="100" />
       <span id="opacityValue">100</span>
     </div>
 
-    <!-- Color picker & recent colors -->
+    <!-- Color -->
     <div class="toolbar-item">
       <label for="brushColor">Color:</label>
-      <input type="color" id="brushColor" value="#000000">
+      <input type="color" id="brushColor" value="#000000" />
       <div id="recentColors"></div>
     </div>
 
-    <!-- Tool selector -->
+    <!-- Color picker modes -->
+    <div class="toolbar-item">
+      <label for="pickerType">Picker:</label>
+      <select id="pickerType">
+        <option value="none">None</option>
+        <option value="wheel">Wheel</option>
+        <option value="square">Square</option>
+        <option value="spectrum">Spectrum</option>
+      </select>
+
+      <div id="colorPickerBox" class="picker-box" style="display:none;">
+        <canvas id="colorPickerCanvas" width="160" height="160"></canvas>
+      </div>
+    </div>
+
+    <!-- Tool -->
     <div class="toolbar-item">
       <label for="tool">Tool:</label>
       <select id="tool">
@@ -86,13 +103,12 @@
         <option value="dottedRectangle">Dotted Rectangle</option>
         <option value="circle">Circle</option>
         <option value="ellipse">Ellipse</option>
-        <option value="oval">Oval</option>
         <option value="star">Star</option>
         <option value="heart">Heart</option>
       </select>
     </div>
 
-    <!-- Canvas Background Options -->
+    <!-- Background -->
     <div class="toolbar-item">
       <label for="backgroundPattern">Canvas Background:</label>
       <select id="backgroundPattern">
@@ -109,7 +125,7 @@
       </select>
     </div>
 
-    <!-- Action Buttons -->
+    <!-- Actions -->
     <div class="toolbar-item">
       <button id="clearCanvas">Clear Canvas</button>
       <button id="undoCanvas">⟲ Undo</button>
@@ -127,25 +143,61 @@
       <button id="flipCanvas">Flip Canvas</button>
 
       <button id="addImageButton">Add Image</button>
-      <input type="file" id="addImageInput" accept="image/*" style="display:none;">
+      <input type="file" id="addImageInput" accept="image/*" style="display:none;" />
 
       <button id="darkModeToggle" aria-pressed="false" title="Switch to dark mode">☀️</button>
     </div>
 
-    <!-- Symmetry mode -->
+    <!-- Symmetry -->
     <div class="toolbar-item">
       <label>
-        <input type="checkbox" id="symmetry">
+        <input type="checkbox" id="symmetry" />
         Symmetry Mode
       </label>
     </div>
+
+    <!-- Layers -->
+    <div class="toolbar-item layers-box">
+      <div class="layers-title">Layers</div>
+      <button id="addLayerBtn" type="button">+ Add Layer</button>
+
+      <div class="layer-row">
+        <input type="radio" name="activeLayer" value="0" checked />
+        <label>Layer 1</label>
+        <label class="vis">
+          <input type="checkbox" id="layerVis0" checked />
+          <span>Visible</span>
+        </label>
+      </div>
+
+      <div class="layer-row">
+        <input type="radio" name="activeLayer" value="1" />
+        <label>Layer 2</label>
+        <label class="vis">
+          <input type="checkbox" id="layerVis1" checked />
+          <span>Visible</span>
+        </label>
+      </div>
+
+      <div class="layer-row">
+        <input type="radio" name="activeLayer" value="2" />
+        <label>Layer 3</label>
+        <label class="vis">
+          <input type="checkbox" id="layerVis2" checked />
+          <span>Visible</span>
+        </label>
+      </div>
+    </div>
   </div>
 
-  <!-- Drawing Canvas Container -->
+  <!-- Canvas Container -->
   <div class="canvas-container plain" id="canvasContainer">
-    <canvas id="drawingCanvas" width="800" height="600"></canvas>
+    <!-- 3 layers -->
+    <canvas id="layerCanvas0" width="800" height="600"></canvas>
+    <canvas id="layerCanvas1" width="800" height="600"></canvas>
+    <canvas id="layerCanvas2" width="800" height="600"></canvas>
 
-    <!-- Transform box overlay -->
+    <!-- Transform box -->
     <div id="transformBox" class="transform-box" style="display:none;" role="group" aria-label="Transform handles">
       <div class="handle handle-nw" data-handle="nw"></div>
       <div class="handle handle-n"  data-handle="n"></div>
