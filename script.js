@@ -495,7 +495,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Tuning knobs
     const TOL = 28;       
     const TOL_EDGE = 40;    // slightly higher for edge expand
-    const EDGE_EXPAND = 1;  // "under outline" by ~1px
+    const EDGE_EXPAND = 3;  // "under outline" by ~3px
     const alphaMin = 0;
 
     const tolSq = TOL * TOL;
