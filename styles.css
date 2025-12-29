@@ -32,7 +32,7 @@ header h1 { margin: 0; color: white; font-size: 3em; }
   padding: 10px;
   border-radius: 8px;
   margin: 10px auto;
-  max-width: 1100px;
+  max-width: 1150px;
 }
 
 .toolbar-item {
@@ -55,7 +55,7 @@ button:hover { background-color: #e699f0; }
 
 /* Layers UI */
 .layers-panel {
-  min-width: 260px;
+  min-width: 280px;
   border: 1px solid rgba(195, 185, 255, 0.5);
   border-radius: 8px;
   padding: 8px;
@@ -63,6 +63,12 @@ button:hover { background-color: #e699f0; }
 
 .layers-title {
   color: #7c3aed;
+  margin-bottom: 6px;
+}
+
+.layers-actions {
+  display: flex;
+  gap: 8px;
   margin-bottom: 6px;
 }
 
@@ -91,26 +97,43 @@ button:hover { background-color: #e699f0; }
   position: relative;
   background-size: cover;
   background-position: center;
-  overflow: visible; /* allow rotate handle outside */
+  overflow: visible;
 }
 
-/* Predefined Backgrounds */
+/* Backgrounds */
 .canvas-container.plain { background-color: #fff; }
 .canvas-container.dark  { background-color: #000; }
-.canvas-container.notebook { background: repeating-linear-gradient(0deg, #fff, #fff 23px, #d1d1d1 24px); }
 
-.canvas-container.pastel {
-  background: linear-gradient(45deg, #A3D3FF 25%, transparent 25%) -50px 0,
-              linear-gradient(-45deg, #FFB2F7 25%, transparent 25%) -50px 0,
-              linear-gradient(45deg, transparent 75%, #C3B9FF 75%),
-              linear-gradient(-45deg, transparent 75%, #C3B9FF 75%);
-  background-size: 100px 100px;
+.canvas-container.notebook {
+  background: repeating-linear-gradient(0deg, #fff, #fff 23px, #d1d1d1 24px);
+}
+
+/* Transparent checkerboards */
+.canvas-container.transparentLight {
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(45deg, rgba(0,0,0,0.10) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(0,0,0,0.10) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(0,0,0,0.10) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(0,0,0,0.10) 75%);
+  background-size: 24px 24px;
+  background-position: 0 0, 0 12px, 12px -12px, -12px 0px;
+}
+
+.canvas-container.transparentDark {
+  background-color: #0b0f1a;
+  background-image:
+    linear-gradient(45deg, rgba(255,255,255,0.12) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255,255,255,0.12) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.12) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.12) 75%);
+  background-size: 24px 24px;
+  background-position: 0 0, 0 12px, 12px -12px, -12px 0px;
 }
 
 .canvas-container.fabric { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/fabric%20copy.png'); }
 .canvas-container.paper  { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/10366807.jpg'); }
 .canvas-container.grid   { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/sl_072622_51930_13.jpg'); }
-.canvas-container.oldpaper { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/37416bdfbbe287d1f1cd44fa8dfd3159.jpg'); }
 .canvas-container.wood   { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/wood.jpg'); }
 .canvas-container.marble { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/marble%20copy.png'); }
 
@@ -198,9 +221,7 @@ canvas {
   background: #ef4444;
 }
 
-/* =========================
-   IMPORTANT FIX: Overlays must not block tools
-   ========================= */
+/* IMPORTANT: Overlays must not block tools */
 .selection-overlay,
 .crop-overlay,
 #lassoOverlay {
@@ -233,5 +254,5 @@ body.dark button { background-color: #8b5cf6; color: #ffffff; }
 body.dark button:hover { background-color: #7c3aed; }
 body.dark .layers-panel { border-color: rgba(75, 85, 99, 0.8); }
 body.dark .canvas-container { border-color: #4b5563; }
-/* Important: plain must stay white in dark mode */
+/* plain must stay white in dark mode */
 body.dark .canvas-container.plain { background-color: #ffffff; }
