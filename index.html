@@ -35,7 +35,7 @@
     <div class="toolbar-item color-tools">
       <label for="brushColor">Color:</label>
       <input type="color" id="brushColor" value="#000000">
-      <button id="toggleWheel" type="button">🎛️ Wheels</button>
+      <button id="toggleWheel" type="button" class="icon-btn" data-tip="Color Wheels" aria-label="Color Wheels">🎛️</button>
       <div id="recentColors"></div>
     </div>
 
@@ -110,10 +110,10 @@
       </select>
     </div>
 
-    <div class="toolbar-item">
-      <button id="clearCanvas" type="button">Clear Canvas</button>
-      <button id="undoCanvas" type="button">⟲ Undo</button>
-      <button id="redoCanvas" type="button">⟳ Redo</button>
+    <div class="toolbar-item icon-actions">
+      <button id="clearCanvas" type="button" class="icon-btn" data-tip="Clear Canvas" aria-label="Clear Canvas">🧹</button>
+      <button id="undoCanvas" type="button" class="icon-btn" data-tip="Undo" aria-label="Undo">↶</button>
+      <button id="redoCanvas" type="button" class="icon-btn" data-tip="Redo" aria-label="Redo">↷</button>
 
       <label for="downloadFormat" class="sr-only">Download format</label>
       <select id="downloadFormat">
@@ -123,13 +123,13 @@
         <option value="jpeg">JPEG</option>
       </select>
 
-      <button id="downloadCanvas" type="button">Download</button>
-      <button id="flipCanvas" type="button">Flip Active</button>
+      <button id="downloadCanvas" type="button" class="icon-btn" data-tip="Download" aria-label="Download">⬇️</button>
+      <button id="flipCanvas" type="button" class="icon-btn" data-tip="Flip Active Layer" aria-label="Flip Active Layer">🔁</button>
 
-      <button id="addImageButton" type="button">Add Image</button>
+      <button id="addImageButton" type="button" class="icon-btn" data-tip="Add Image" aria-label="Add Image">🖼️</button>
       <input type="file" id="addImageInput" accept="image/*" style="display:none;">
 
-      <button id="darkModeToggle" aria-pressed="false" title="Switch to dark mode" type="button">☀️</button>
+      <button id="darkModeToggle" aria-pressed="false" title="Switch to dark mode" type="button" class="icon-btn" data-tip="Toggle Theme" aria-label="Toggle Theme">☀️</button>
     </div>
 
     <div class="toolbar-item">
@@ -148,11 +148,10 @@
         <button id="wheelTabCircular" type="button" class="tab-btn active">Circular</button>
         <button id="wheelTabTriangle" type="button" class="tab-btn">Triangle</button>
       </div>
-      <button id="closeWheel" type="button" class="wheel-close">✕</button>
+      <button id="closeWheel" type="button" class="icon-btn" data-tip="Close" aria-label="Close">✕</button>
     </div>
 
     <div class="wheel-body">
-      <!-- Circular -->
       <div id="circularWrap" class="wheel-mode">
         <canvas id="circularWheel" width="240" height="240"></canvas>
         <div class="wheel-col">
@@ -161,7 +160,6 @@
         </div>
       </div>
 
-      <!-- Triangle -->
       <div id="triangleWrap" class="wheel-mode" style="display:none;">
         <canvas id="hueRing" width="180" height="180"></canvas>
         <canvas id="svTriangle" width="220" height="200"></canvas>
@@ -175,19 +173,22 @@
     </div>
   </div>
 
+  <!-- App layout -->
   <div class="app-layout">
-    <aside class="layers-panel">
-      <div class="layers-header">
-        <h2>Layers</h2>
-        <div class="layers-actions">
-          <button id="addLayerBtn" type="button">Add</button>
-          <button id="mergeLayerBtn" type="button">Merge Down</button>
+    <!-- Layers LEFT -->
+    <aside class="layers-panel" aria-label="Layers panel">
+      <div class="layers-topbar">
+        <div class="layers-title">Layers</div>
+        <div class="layers-top-actions">
+          <button id="addLayerBtn" type="button" class="icon-btn" data-tip="Add Layer" aria-label="Add Layer">➕</button>
+          <button id="mergeLayerBtn" type="button" class="icon-btn" data-tip="Merge Down" aria-label="Merge Down">🧬</button>
         </div>
       </div>
       <div id="layersList" class="layers-list"></div>
     </aside>
 
-    <main>
+    <!-- Canvas RIGHT -->
+    <main class="main-stage">
       <div class="canvas-container plain" id="canvasContainer">
         <div id="symmetryGuide" class="symmetry-guide" style="display:none;"></div>
 
