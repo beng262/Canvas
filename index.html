@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>DrawNow!</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <!-- Header -->
@@ -17,20 +17,29 @@
     <!-- Brush size & opacity -->
     <div class="toolbar-item">
       <label for="brushSize">Brush Size:</label>
-      <input type="range" id="brushSize" min="1" max="50" value="10" />
+      <input type="range" id="brushSize" min="1" max="80" value="10">
       <span id="brushSizeValue">10</span>
     </div>
 
     <div class="toolbar-item">
       <label for="opacity">Opacity:</label>
-      <input type="range" id="opacity" min="0" max="100" value="100" />
+      <input type="range" id="opacity" min="0" max="100" value="100">
       <span id="opacityValue">100</span>
     </div>
 
-    <!-- Color picker -->
+    <!-- Brush spacing -->
     <div class="toolbar-item">
+      <label for="brushSpacing">Spacing:</label>
+      <input type="range" id="brushSpacing" min="25" max="300" value="100">
+      <span id="brushSpacingValue">100</span>
+    </div>
+
+    <!-- Color tools -->
+    <div class="toolbar-item color-tools">
       <label for="brushColor">Color:</label>
-      <input type="color" id="brushColor" value="#000000" />
+      <input type="color" id="brushColor" value="#000000">
+      <button id="toggleWheel" type="button">🎛️ Wheel</button>
+      <div id="recentColors"></div>
     </div>
 
     <!-- Tool selector -->
@@ -44,7 +53,7 @@
         <option value="select">Select Area</option>
         <option value="lasso">Lasso Select</option>
         <option value="transform">Transform</option>
-        <option value="cropImage">Crop Image</option>
+        <option value="cropImage">Crop</option>
         <option value="text">Text</option>
       </select>
     </div>
@@ -54,24 +63,26 @@
       <label for="brushType">Brush Type:</label>
       <select id="brushType">
         <option value="round">Round</option>
-        <option value="square">Square</option>
-        <option value="dotted">Dotted</option>
-        <option value="spray">Spray</option>
-        <option value="calligraphy">Calligraphy</option>
-        <option value="splatter">Splatter</option>
-        <option value="watercolor">Watercolor</option>
-        <option value="chalk">Chalk</option>
-        <option value="oil">Oil</option>
+        <option value="ink">Ink</option>
+        <option value="marker">Marker</option>
+        <option value="fountain">Fountain</option>
         <option value="pencil">Pencil</option>
-        <option value="neon">Neon</option>
-        <option value="glitter">Glitter</option>
-        <option value="textured">Textured</option>
-        <option value="pattern">Pattern</option>
+        <option value="sketch">Sketch</option>
+        <option value="graphite">Graphite</option>
+        <option value="charcoal">Charcoal</option>
+        <option value="crosshatch">Crosshatch</option>
+        <option value="chalk">Chalk</option>
+        <option value="watercolor">Watercolor</option>
+        <option value="oil">Oil</option>
+        <option value="spray">Spray</option>
         <option value="airbrush">Airbrush</option>
+        <option value="splatter">Splatter</option>
+        <option value="glitter">Glitter</option>
+        <option value="scatter">Scatter</option>
+        <option value="dotted">Dotted</option>
+        <option value="square">Square</option>
         <option value="star">Star</option>
         <option value="heart">Heart</option>
-        <option value="zigzag">Zigzag</option>
-        <option value="scatter">Scatter</option>
         <option value="crayon">Crayon</option>
       </select>
     </div>
@@ -91,24 +102,22 @@
       </select>
     </div>
 
-    <!-- Canvas Background -->
+    <!-- Background -->
     <div class="toolbar-item">
       <label for="backgroundPattern">Canvas Background:</label>
       <select id="backgroundPattern">
         <option value="plain">Plain (White)</option>
         <option value="dark">Dark (Black)</option>
-        <option value="transparentLight">Transparent Light</option>
-        <option value="transparentDark">Transparent Dark</option>
-        <option value="notebook">Notebook</option>
-        <option value="fabric">Fabric</option>
-        <option value="paper">Paper</option>
         <option value="grid">Grid</option>
+        <option value="paper">Paper</option>
         <option value="wood">Wood</option>
         <option value="marble">Marble</option>
+        <option value="transparent-light">Transparent Light</option>
+        <option value="transparent-dark">Transparent Dark</option>
       </select>
     </div>
 
-    <!-- Action Buttons -->
+    <!-- Actions -->
     <div class="toolbar-item">
       <button id="clearCanvas" type="button">Clear Canvas</button>
       <button id="undoCanvas" type="button">⟲ Undo</button>
@@ -123,78 +132,90 @@
       </select>
 
       <button id="downloadCanvas" type="button">Download</button>
-      <button id="flipCanvas" type="button">Flip Layer</button>
+      <button id="flipCanvas" type="button">Flip Active</button>
 
       <button id="addImageButton" type="button">Add Image</button>
-      <input type="file" id="addImageInput" accept="image/*" style="display:none;" />
+      <input type="file" id="addImageInput" accept="image/*" style="display:none;">
 
       <button id="darkModeToggle" aria-pressed="false" title="Switch to dark mode" type="button">☀️</button>
     </div>
 
-    <!-- Symmetry mode -->
+    <!-- Symmetry -->
     <div class="toolbar-item">
       <label>
-        <input type="checkbox" id="symmetry" />
+        <input type="checkbox" id="symmetry">
         Symmetry Mode
       </label>
     </div>
+  </div>
 
-    <!-- Layers -->
-    <div class="toolbar-item layers-panel">
-      <div class="layers-title">Layers</div>
-
-      <div class="layers-actions">
-        <button id="addLayerBtn" type="button">Add Layer</button>
-        <button id="mergeLayerBtn" type="button" title="Merge active layer into the layer below">Merge Down</button>
-      </div>
-
-      <div id="layerRow0" class="layer-row">
-        <label><input type="radio" name="activeLayer" value="0" checked /> Layer 1</label>
-        <label><input type="checkbox" id="layerVis0" checked /> Visible</label>
-      </div>
-
-      <div id="layerRow1" class="layer-row layer-hidden">
-        <label><input type="radio" name="activeLayer" value="1" /> Layer 2</label>
-        <label><input type="checkbox" id="layerVis1" checked /> Visible</label>
-        <button id="deleteLayer1" type="button">Delete</button>
-      </div>
-
-      <div id="layerRow2" class="layer-row layer-hidden">
-        <label><input type="radio" name="activeLayer" value="2" /> Layer 3</label>
-        <label><input type="checkbox" id="layerVis2" checked /> Visible</label>
-        <button id="deleteLayer2" type="button">Delete</button>
+  <!-- Color Wheel Panel (Triangle wheel) -->
+  <div id="wheelPanel" class="wheel-panel" style="display:none;">
+    <div class="wheel-header">
+      <strong>Triangle Wheel</strong>
+      <button id="closeWheel" type="button">✕</button>
+    </div>
+    <div class="wheel-body">
+      <canvas id="hueRing" width="180" height="180"></canvas>
+      <canvas id="svTriangle" width="220" height="200"></canvas>
+      <div class="wheel-readout">
+        <div><span class="chip" id="wheelChip"></span></div>
+        <div id="wheelHex">#000000</div>
+        <button id="wheelSetBtn" type="button">Use Color</button>
       </div>
     </div>
   </div>
 
-  <!-- Canvas Container -->
-  <div class="canvas-container plain" id="canvasContainer">
-    <!-- 3 Layers -->
-    <canvas id="layerCanvas0" width="800" height="600"></canvas>
-    <canvas id="layerCanvas1" width="800" height="600"></canvas>
-    <canvas id="layerCanvas2" width="800" height="600"></canvas>
+  <!-- App layout: Canvas + Layers -->
+  <div class="app-layout">
+    <!-- Layers panel -->
+    <aside class="layers-panel">
+      <div class="layers-header">
+        <h2>Layers</h2>
+        <div class="layers-actions">
+          <button id="addLayerBtn" type="button">Add Layer</button>
+          <button id="mergeLayerBtn" type="button">Merge Down</button>
+        </div>
+        <div class="layers-note">Max 10 layers. Delete & merge are undoable.</div>
+      </div>
 
-    <!-- Transform overlay -->
-    <div id="transformBox" class="transform-box" style="display:none;" role="group" aria-label="Transform handles">
-      <div class="handle handle-nw" data-handle="nw"></div>
-      <div class="handle handle-n"  data-handle="n"></div>
-      <div class="handle handle-ne" data-handle="ne"></div>
-      <div class="handle handle-e"  data-handle="e"></div>
-      <div class="handle handle-se" data-handle="se"></div>
-      <div class="handle handle-s"  data-handle="s"></div>
-      <div class="handle handle-sw" data-handle="sw"></div>
-      <div class="handle handle-w"  data-handle="w"></div>
-      <div class="rotate-handle" data-rotate="true" title="Rotate"></div>
-    </div>
+      <div id="layersList" class="layers-list"></div>
+    </aside>
 
-    <!-- Selection overlay -->
-    <div id="selectionOverlay" class="selection-overlay" style="display:none;"></div>
+    <!-- Canvas container -->
+    <main>
+      <div class="canvas-container plain" id="canvasContainer">
+        <!-- Canvases are created by script.js -->
 
-    <!-- Lasso overlay -->
-    <canvas id="lassoOverlay" class="lasso-overlay" width="800" height="600"></canvas>
+        <!-- Symmetry guide -->
+        <div id="symmetryGuide" class="symmetry-guide" style="display:none;"></div>
 
-    <!-- Crop overlay -->
-    <div id="cropOverlay" class="crop-overlay" style="display:none;"></div>
+        <!-- Transform box overlay -->
+        <div id="transformBox" class="transform-box" style="display:none;" role="group" aria-label="Transform handles">
+          <div class="handle handle-nw" data-handle="nw"></div>
+          <div class="handle handle-n"  data-handle="n"></div>
+          <div class="handle handle-ne" data-handle="ne"></div>
+          <div class="handle handle-e"  data-handle="e"></div>
+          <div class="handle handle-se" data-handle="se"></div>
+          <div class="handle handle-s"  data-handle="s"></div>
+          <div class="handle handle-sw" data-handle="sw"></div>
+          <div class="handle handle-w"  data-handle="w"></div>
+          <div class="rotate-handle" data-rotate="true" title="Rotate"></div>
+        </div>
+
+        <!-- Selection overlay -->
+        <div id="selectionOverlay" class="selection-overlay" style="display:none;"></div>
+
+        <!-- Lasso overlay -->
+        <canvas id="lassoOverlay" class="lasso-overlay" width="800" height="600"></canvas>
+
+        <!-- Crop overlay -->
+        <div id="cropOverlay" class="crop-overlay" style="display:none;"></div>
+
+        <!-- Input overlay (captures events) -->
+        <canvas id="inputOverlay" class="input-overlay" width="800" height="600"></canvas>
+      </div>
+    </main>
   </div>
 
   <script src="script.js"></script>
