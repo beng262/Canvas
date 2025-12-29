@@ -14,7 +14,6 @@
 
   <!-- Toolbar -->
   <div class="toolbar">
-    <!-- Brush size & opacity -->
     <div class="toolbar-item">
       <label for="brushSize">Brush Size:</label>
       <input type="range" id="brushSize" min="1" max="80" value="10">
@@ -27,22 +26,19 @@
       <span id="opacityValue">100</span>
     </div>
 
-    <!-- Brush spacing -->
     <div class="toolbar-item">
       <label for="brushSpacing">Spacing:</label>
       <input type="range" id="brushSpacing" min="25" max="300" value="100">
       <span id="brushSpacingValue">100</span>
     </div>
 
-    <!-- Color tools -->
     <div class="toolbar-item color-tools">
       <label for="brushColor">Color:</label>
       <input type="color" id="brushColor" value="#000000">
-      <button id="toggleWheel" type="button">🎛️ Wheel</button>
+      <button id="toggleWheel" type="button">🎛️ Wheels</button>
       <div id="recentColors"></div>
     </div>
 
-    <!-- Tool selector -->
     <div class="toolbar-item">
       <label for="tool">Tool:</label>
       <select id="tool">
@@ -58,7 +54,6 @@
       </select>
     </div>
 
-    <!-- Brush types -->
     <div class="toolbar-item">
       <label for="brushType">Brush Type:</label>
       <select id="brushType">
@@ -87,7 +82,6 @@
       </select>
     </div>
 
-    <!-- Shape options -->
     <div class="toolbar-item" id="shapeOptions" style="display:none;">
       <label for="shapeType">Shape:</label>
       <select id="shapeType">
@@ -102,7 +96,6 @@
       </select>
     </div>
 
-    <!-- Background -->
     <div class="toolbar-item">
       <label for="backgroundPattern">Canvas Background:</label>
       <select id="backgroundPattern">
@@ -117,7 +110,6 @@
       </select>
     </div>
 
-    <!-- Actions -->
     <div class="toolbar-item">
       <button id="clearCanvas" type="button">Clear Canvas</button>
       <button id="undoCanvas" type="button">⟲ Undo</button>
@@ -140,7 +132,6 @@
       <button id="darkModeToggle" aria-pressed="false" title="Switch to dark mode" type="button">☀️</button>
     </div>
 
-    <!-- Symmetry -->
     <div class="toolbar-item">
       <label>
         <input type="checkbox" id="symmetry">
@@ -149,15 +140,33 @@
     </div>
   </div>
 
-  <!-- Color Wheel Panel (Triangle wheel) -->
+  <!-- Color Wheels Panel -->
   <div id="wheelPanel" class="wheel-panel" style="display:none;">
     <div class="wheel-header">
-      <strong>Triangle Wheel</strong>
-      <button id="closeWheel" type="button">✕</button>
+      <div class="wheel-title">Color Wheels</div>
+      <div class="wheel-tabs">
+        <button id="wheelTabCircular" type="button" class="tab-btn active">Circular</button>
+        <button id="wheelTabTriangle" type="button" class="tab-btn">Triangle</button>
+      </div>
+      <button id="closeWheel" type="button" class="wheel-close">✕</button>
     </div>
+
     <div class="wheel-body">
-      <canvas id="hueRing" width="180" height="180"></canvas>
-      <canvas id="svTriangle" width="220" height="200"></canvas>
+      <!-- Circular -->
+      <div id="circularWrap" class="wheel-mode">
+        <canvas id="circularWheel" width="240" height="240"></canvas>
+        <div class="wheel-col">
+          <label class="wheel-label" for="valueSlider">Value</label>
+          <input id="valueSlider" type="range" min="0" max="100" value="100">
+        </div>
+      </div>
+
+      <!-- Triangle -->
+      <div id="triangleWrap" class="wheel-mode" style="display:none;">
+        <canvas id="hueRing" width="180" height="180"></canvas>
+        <canvas id="svTriangle" width="220" height="200"></canvas>
+      </div>
+
       <div class="wheel-readout">
         <div><span class="chip" id="wheelChip"></span></div>
         <div id="wheelHex">#000000</div>
@@ -166,31 +175,22 @@
     </div>
   </div>
 
-  <!-- App layout: Canvas + Layers -->
   <div class="app-layout">
-    <!-- Layers panel -->
     <aside class="layers-panel">
       <div class="layers-header">
         <h2>Layers</h2>
         <div class="layers-actions">
-          <button id="addLayerBtn" type="button">Add Layer</button>
+          <button id="addLayerBtn" type="button">Add</button>
           <button id="mergeLayerBtn" type="button">Merge Down</button>
         </div>
-        <div class="layers-note">Max 10 layers. Delete & merge are undoable.</div>
       </div>
-
       <div id="layersList" class="layers-list"></div>
     </aside>
 
-    <!-- Canvas container -->
     <main>
       <div class="canvas-container plain" id="canvasContainer">
-        <!-- Canvases are created by script.js -->
-
-        <!-- Symmetry guide -->
         <div id="symmetryGuide" class="symmetry-guide" style="display:none;"></div>
 
-        <!-- Transform box overlay -->
         <div id="transformBox" class="transform-box" style="display:none;" role="group" aria-label="Transform handles">
           <div class="handle handle-nw" data-handle="nw"></div>
           <div class="handle handle-n"  data-handle="n"></div>
@@ -203,16 +203,9 @@
           <div class="rotate-handle" data-rotate="true" title="Rotate"></div>
         </div>
 
-        <!-- Selection overlay -->
         <div id="selectionOverlay" class="selection-overlay" style="display:none;"></div>
-
-        <!-- Lasso overlay -->
         <canvas id="lassoOverlay" class="lasso-overlay" width="800" height="600"></canvas>
-
-        <!-- Crop overlay -->
         <div id="cropOverlay" class="crop-overlay" style="display:none;"></div>
-
-        <!-- Input overlay (captures events) -->
         <canvas id="inputOverlay" class="input-overlay" width="800" height="600"></canvas>
       </div>
     </main>
