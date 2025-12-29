@@ -97,12 +97,12 @@
       <select id="backgroundPattern">
         <option value="plain">Plain (White)</option>
         <option value="dark">Dark (Black)</option>
+        <option value="transparentLight">Transparent Light</option>
+        <option value="transparentDark">Transparent Dark</option>
         <option value="notebook">Notebook</option>
-        <option value="pastel">Pastel Pattern</option>
         <option value="fabric">Fabric</option>
         <option value="paper">Paper</option>
         <option value="grid">Grid</option>
-        <option value="oldpaper">Old Paper</option>
         <option value="wood">Wood</option>
         <option value="marble">Marble</option>
       </select>
@@ -142,7 +142,11 @@
     <!-- Layers -->
     <div class="toolbar-item layers-panel">
       <div class="layers-title">Layers</div>
-      <button id="addLayerBtn" type="button">Add Layer</button>
+
+      <div class="layers-actions">
+        <button id="addLayerBtn" type="button">Add Layer</button>
+        <button id="mergeLayerBtn" type="button" title="Merge active layer into the layer below">Merge Down</button>
+      </div>
 
       <div id="layerRow0" class="layer-row">
         <label><input type="radio" name="activeLayer" value="0" checked /> Layer 1</label>
@@ -159,16 +163,6 @@
         <label><input type="radio" name="activeLayer" value="2" /> Layer 3</label>
         <label><input type="checkbox" id="layerVis2" checked /> Visible</label>
         <button id="deleteLayer2" type="button">Delete</button>
-      </div>
-    </div>
-
-    <!-- Optional: color wheels UI placeholder (kept because your script checks IDs) -->
-    <div class="toolbar-item" style="display:none;">
-      <select id="pickerType">
-        <option value="triangle">Triangle</option>
-      </select>
-      <div id="colorPickerBox">
-        <canvas id="colorPickerCanvas" width="200" height="200"></canvas>
       </div>
     </div>
   </div>
