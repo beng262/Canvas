@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>DrawNow!</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <!-- Header -->
@@ -14,33 +14,42 @@
 
   <!-- Toolbar -->
   <div class="toolbar">
+    <!-- Brush size -->
     <div class="toolbar-item">
-      <label for="brushSize">Brush Size:</label>
-      <input type="range" id="brushSize" min="1" max="80" value="10">
+      <label for="brushSize">Size</label>
+      <input type="range" id="brushSize" min="1" max="80" value="10" />
       <span id="brushSizeValue">10</span>
     </div>
 
+    <!-- Opacity -->
     <div class="toolbar-item">
-      <label for="opacity">Opacity:</label>
-      <input type="range" id="opacity" min="0" max="100" value="100">
+      <label for="opacity">Opacity</label>
+      <input type="range" id="opacity" min="0" max="100" value="100" />
       <span id="opacityValue">100</span>
     </div>
 
+    <!-- Spacing -->
     <div class="toolbar-item">
-      <label for="brushSpacing">Spacing:</label>
-      <input type="range" id="brushSpacing" min="25" max="300" value="100">
+      <label for="brushSpacing">Spacing</label>
+      <input type="range" id="brushSpacing" min="25" max="300" value="100" />
       <span id="brushSpacingValue">100</span>
     </div>
 
-    <div class="toolbar-item color-tools">
-      <label for="brushColor">Color:</label>
-      <input type="color" id="brushColor" value="#000000">
-      <button id="toggleWheel" type="button" class="icon-btn" data-tip="Color Wheels" aria-label="Color Wheels">🎛️</button>
+    <!-- Color + wheel button -->
+    <div class="toolbar-item color-row">
+      <label for="brushColor">Color</label>
+      <input type="color" id="brushColor" value="#000000" />
+      <button id="toggleWheel" class="icon-btn" title="Color Wheels" aria-label="Color Wheels">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2a10 10 0 1 0 10 10A10.01 10.01 0 0 0 12 2Zm1 18.93V20a2 2 0 0 0-2-2H7.07A8 8 0 0 1 11 4.07V6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V5.08A8 8 0 0 1 13 20.93Z"/>
+        </svg>
+      </button>
       <div id="recentColors"></div>
     </div>
 
+    <!-- Tool -->
     <div class="toolbar-item">
-      <label for="tool">Tool:</label>
+      <label for="tool">Tool</label>
       <select id="tool">
         <option value="pen">Pen</option>
         <option value="eraser">Eraser</option>
@@ -49,24 +58,26 @@
         <option value="select">Select Area</option>
         <option value="lasso">Lasso Select</option>
         <option value="transform">Transform</option>
-        <option value="cropImage">Crop</option>
+        <option value="crop">Crop</option>
         <option value="text">Text</option>
       </select>
     </div>
 
+    <!-- Brush -->
     <div class="toolbar-item">
-      <label for="brushType">Brush Type:</label>
+      <label for="brushType">Brush</label>
       <select id="brushType">
         <option value="round">Round</option>
-        <option value="ink">Ink</option>
         <option value="marker">Marker</option>
+        <option value="ink">Ink</option>
         <option value="fountain">Fountain</option>
         <option value="pencil">Pencil</option>
-        <option value="sketch">Sketch</option>
         <option value="graphite">Graphite</option>
+        <option value="sketch">Sketch</option>
         <option value="charcoal">Charcoal</option>
         <option value="crosshatch">Crosshatch</option>
         <option value="chalk">Chalk</option>
+        <option value="crayon">Crayon</option>
         <option value="watercolor">Watercolor</option>
         <option value="oil">Oil</option>
         <option value="spray">Spray</option>
@@ -78,14 +89,14 @@
         <option value="square">Square</option>
         <option value="star">Star</option>
         <option value="heart">Heart</option>
-        <option value="crayon">Crayon</option>
       </select>
     </div>
 
+    <!-- Shape options -->
     <div class="toolbar-item" id="shapeOptions" style="display:none;">
-      <label for="shapeType">Shape:</label>
+      <label for="shapeType">Shape</label>
       <select id="shapeType">
-        <option value="line">Straight Line</option>
+        <option value="line">Line</option>
         <option value="dottedLine">Dotted Line</option>
         <option value="rectangle">Rectangle</option>
         <option value="dottedRectangle">Dotted Rectangle</option>
@@ -96,102 +107,107 @@
       </select>
     </div>
 
+    <!-- Background -->
     <div class="toolbar-item">
-      <label for="backgroundPattern">Canvas Background:</label>
+      <label for="backgroundPattern">BG</label>
       <select id="backgroundPattern">
-        <option value="plain">Plain (White)</option>
-        <option value="dark">Dark (Black)</option>
-        <option value="grid">Grid</option>
+        <option value="plain">Plain</option>
+        <option value="dark">Dark</option>
+        <option value="notebook">Notebook</option>
+        <option value="fabric">Fabric</option>
         <option value="paper">Paper</option>
+        <option value="grid">Grid</option>
         <option value="wood">Wood</option>
         <option value="marble">Marble</option>
-        <option value="transparent-light">Transparent Light</option>
-        <option value="transparent-dark">Transparent Dark</option>
+        <option value="transLight">Transparent Light</option>
+        <option value="transDark">Transparent Dark</option>
       </select>
     </div>
 
+    <!-- Icon actions -->
     <div class="toolbar-item icon-actions">
-      <button id="clearCanvas" type="button" class="icon-btn" data-tip="Clear Canvas" aria-label="Clear Canvas">🧹</button>
-      <button id="undoCanvas" type="button" class="icon-btn" data-tip="Undo" aria-label="Undo">↶</button>
-      <button id="redoCanvas" type="button" class="icon-btn" data-tip="Redo" aria-label="Redo">↷</button>
+      <button id="newCanvas" class="icon-btn" title="New Canvas" aria-label="New Canvas">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm-6 10h-2v2a1 1 0 0 1-2 0v-2H7a1 1 0 0 1 0-2h2V9a1 1 0 0 1 2 0v2h2a1 1 0 0 1 0 2Z"/>
+        </svg>
+      </button>
 
-      <label for="downloadFormat" class="sr-only">Download format</label>
-      <select id="downloadFormat">
+      <button id="clearCanvas" class="icon-btn" title="Clear Canvas" aria-label="Clear Canvas">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M16 9l-4-4-8 8v5h5l8-8Zm3.7-3.3a1 1 0 0 0 0-1.4l-1-1a1 1 0 0 0-1.4 0L16 4.2 19.8 8l-.1.1Z"/>
+        </svg>
+      </button>
+
+      <button id="undoCanvas" class="icon-btn" title="Undo" aria-label="Undo">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 5a7 7 0 0 1 7 7h-2a5 5 0 0 0-5-5H7.8l2.6 2.6L9 11 4 6l5-5 1.4 1.4L7.8 5H12Z"/>
+        </svg>
+      </button>
+
+      <button id="redoCanvas" class="icon-btn" title="Redo" aria-label="Redo">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 5H6v2h6a5 5 0 0 1 5 5h-4.2l2.6-2.6L16 8l5 5-5 5-1.4-1.4 2.6-2.6H17a7 7 0 0 0-5-9Z"/>
+        </svg>
+      </button>
+
+      <select id="downloadFormat" title="Download Format" aria-label="Download Format">
         <option value="png">PNG</option>
         <option value="png-transparent">PNG (Transparent)</option>
         <option value="jpg">JPG</option>
         <option value="jpeg">JPEG</option>
       </select>
 
-      <button id="downloadCanvas" type="button" class="icon-btn" data-tip="Download" aria-label="Download">⬇️</button>
-      <button id="flipCanvas" type="button" class="icon-btn" data-tip="Flip Active Layer" aria-label="Flip Active Layer">🔁</button>
+      <button id="downloadCanvas" class="icon-btn" title="Download" aria-label="Download">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3a1 1 0 0 1 1 1v8.59l2.3-2.3 1.4 1.42L12 16.41l-4.7-4.7 1.4-1.42 2.3 2.3V4a1 1 0 0 1 1-1Zm-7 17a1 1 0 0 1 1-1h12a1 1 0 0 1 0 2H6a1 1 0 0 1-1-1Z"/>
+        </svg>
+      </button>
 
-      <button id="addImageButton" type="button" class="icon-btn" data-tip="Add Image" aria-label="Add Image">🖼️</button>
-      <input type="file" id="addImageInput" accept="image/*" style="display:none;">
+      <button id="flipCanvas" class="icon-btn" title="Flip Layer" aria-label="Flip Layer">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 12a9 9 0 0 1 9-9v2a7 7 0 0 0-7 7Zm9 9a9 9 0 0 0 9-9h-2a7 7 0 0 1-7 7Zm2-16h7v7h-2V7.4l-5.3 5.3-1.4-1.4L17.6 6H14Z"/>
+        </svg>
+      </button>
 
-      <button id="darkModeToggle" aria-pressed="false" title="Switch to dark mode" type="button" class="icon-btn" data-tip="Toggle Theme" aria-label="Toggle Theme">☀️</button>
+      <button id="addImageButton" class="icon-btn" title="Add Image" aria-label="Add Image">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2ZM8.5 11A1.5 1.5 0 1 1 10 9.5 1.5 1.5 0 0 1 8.5 11ZM19 19H5l4.5-6 3.5 4.5 2.5-3L19 19Z"/>
+        </svg>
+      </button>
+      <input type="file" id="addImageInput" accept="image/*" style="display:none;" />
+
+      <button id="darkModeToggle" aria-pressed="false" title="Switch to dark mode">☀️</button>
     </div>
 
+    <!-- Symmetry -->
     <div class="toolbar-item">
-      <label>
-        <input type="checkbox" id="symmetry">
-        Symmetry Mode
+      <label class="check-row">
+        <input type="checkbox" id="symmetry" />
+        Symmetry
       </label>
     </div>
   </div>
 
-  <!-- Color Wheels Panel -->
-  <div id="wheelPanel" class="wheel-panel" style="display:none;">
-    <div class="wheel-header">
-      <div class="wheel-title">Color Wheels</div>
-      <div class="wheel-tabs">
-        <button id="wheelTabCircular" type="button" class="tab-btn active">Circular</button>
-        <button id="wheelTabTriangle" type="button" class="tab-btn">Triangle</button>
-      </div>
-      <button id="closeWheel" type="button" class="icon-btn" data-tip="Close" aria-label="Close">✕</button>
-    </div>
-
-    <div class="wheel-body">
-      <div id="circularWrap" class="wheel-mode">
-        <canvas id="circularWheel" width="240" height="240"></canvas>
-        <div class="wheel-col">
-          <label class="wheel-label" for="valueSlider">Value</label>
-          <input id="valueSlider" type="range" min="0" max="100" value="100">
-        </div>
-      </div>
-
-      <div id="triangleWrap" class="wheel-mode" style="display:none;">
-        <canvas id="hueRing" width="180" height="180"></canvas>
-        <canvas id="svTriangle" width="220" height="200"></canvas>
-      </div>
-
-      <div class="wheel-readout">
-        <div><span class="chip" id="wheelChip"></span></div>
-        <div id="wheelHex">#000000</div>
-        <button id="wheelSetBtn" type="button">Use Color</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- App layout -->
-  <div class="app-layout">
-    <!-- Layers LEFT -->
-    <aside class="layers-panel" aria-label="Layers panel">
-      <div class="layers-topbar">
-        <div class="layers-title">Layers</div>
-        <div class="layers-top-actions">
-          <button id="addLayerBtn" type="button" class="icon-btn" data-tip="Add Layer" aria-label="Add Layer">➕</button>
-          <button id="mergeLayerBtn" type="button" class="icon-btn" data-tip="Merge Down" aria-label="Merge Down">🧬</button>
-        </div>
-      </div>
-      <div id="layersList" class="layers-list"></div>
-    </aside>
-
-    <!-- Canvas RIGHT -->
-    <main class="main-stage">
+  <!-- Workspace -->
+  <div class="workspace">
+    <!-- Canvas zone -->
+    <div class="canvas-wrap">
       <div class="canvas-container plain" id="canvasContainer">
         <div id="symmetryGuide" class="symmetry-guide" style="display:none;"></div>
 
+        <!-- Pointer input layer -->
+        <canvas id="inputOverlay" width="800" height="600"></canvas>
+
+        <!-- Lasso preview -->
+        <canvas id="lassoOverlay" class="lasso-overlay" width="800" height="600"></canvas>
+
+        <!-- Selection rectangle -->
+        <div id="selectionOverlay" class="selection-overlay" style="display:none;"></div>
+
+        <!-- Crop rectangle -->
+        <div id="cropOverlay" class="crop-overlay" style="display:none;"></div>
+
+        <!-- Transform box -->
         <div id="transformBox" class="transform-box" style="display:none;" role="group" aria-label="Transform handles">
           <div class="handle handle-nw" data-handle="nw"></div>
           <div class="handle handle-n"  data-handle="n"></div>
@@ -203,13 +219,103 @@
           <div class="handle handle-w"  data-handle="w"></div>
           <div class="rotate-handle" data-rotate="true" title="Rotate"></div>
         </div>
-
-        <div id="selectionOverlay" class="selection-overlay" style="display:none;"></div>
-        <canvas id="lassoOverlay" class="lasso-overlay" width="800" height="600"></canvas>
-        <div id="cropOverlay" class="crop-overlay" style="display:none;"></div>
-        <canvas id="inputOverlay" class="input-overlay" width="800" height="600"></canvas>
       </div>
-    </main>
+    </div>
+
+    <!-- RIGHT Layers panel -->
+    <aside class="side-panel" id="layersPanel">
+      <div class="side-header">
+        <div class="side-title">Layers</div>
+        <div class="side-actions">
+          <button id="addLayerBtn" class="icon-btn" title="Add Layer" aria-label="Add Layer">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm-6 10h-2v2a1 1 0 0 1-2 0v-2H7a1 1 0 0 1 0-2h2V9a1 1 0 0 1 2 0v2h2a1 1 0 0 1 0 2Z"/>
+            </svg>
+          </button>
+          <button id="mergeLayerBtn" class="icon-btn" title="Merge Down" aria-label="Merge Down">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3a1 1 0 0 1 1 1v9.59l2.3-2.3 1.4 1.42L12 17.41l-4.7-4.7 1.4-1.42 2.3 2.3V4a1 1 0 0 1 1-1Zm-7 18a1 1 0 0 1 1-1h12a1 1 0 0 1 0 2H6a1 1 0 0 1-1-1Z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div id="layersList" class="layers-list"></div>
+    </aside>
+  </div>
+
+  <!-- New Canvas Modal -->
+  <div id="canvasModal" class="modal" style="display:none;">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="New canvas">
+      <div class="modal-title">New Canvas</div>
+
+      <div class="modal-row">
+        <label for="presetSelect">Preset</label>
+        <select id="presetSelect">
+          <option value="800x600">SD (800×600)</option>
+          <option value="1280x720">HD (1280×720)</option>
+          <option value="1024x1024">1:1 (1024×1024)</option>
+          <option value="1024x768">4:3 (1024×768)</option>
+          <option value="1920x1080">16:9 (1920×1080)</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+
+      <div class="modal-row">
+        <label for="customW">Width</label>
+        <input id="customW" type="number" min="200" max="4096" value="800" />
+      </div>
+
+      <div class="modal-row">
+        <label for="customH">Height</label>
+        <input id="customH" type="number" min="200" max="4096" value="600" />
+      </div>
+
+      <div class="modal-actions">
+        <button id="cancelCanvas" class="btn">Cancel</button>
+        <button id="applyCanvas" class="btn primary">Apply</button>
+      </div>
+      <div class="modal-hint">Resizes all layers (content scales to fit).</div>
+    </div>
+  </div>
+
+  <!-- Color Wheels Panel -->
+  <div id="wheelPanel" class="wheel-panel" style="display:none;">
+    <div class="wheel-header">
+      <div class="wheel-title">Color Wheels</div>
+      <button id="closeWheel" class="icon-btn" title="Close" aria-label="Close">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M18.3 5.7a1 1 0 0 0-1.4 0L12 10.6 7.1 5.7A1 1 0 0 0 5.7 7.1l4.9 4.9-4.9 4.9a1 1 0 1 0 1.4 1.4l4.9-4.9 4.9 4.9a1 1 0 0 0 1.4-1.4L13.4 12l4.9-4.9a1 1 0 0 0 0-1.4Z"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="wheel-tabs">
+      <button id="wheelTabCircular" class="tab active" type="button">Circular</button>
+      <button id="wheelTabTriangle" class="tab" type="button">Triangle</button>
+    </div>
+
+    <div id="circularWrap" class="wheel-wrap">
+      <canvas id="circularWheel" width="220" height="220"></canvas>
+      <div class="wheel-slider">
+        <label for="valueSlider">Value</label>
+        <input id="valueSlider" type="range" min="0" max="100" value="100" />
+      </div>
+    </div>
+
+    <div id="triangleWrap" class="wheel-wrap" style="display:none;">
+      <canvas id="hueRing" width="220" height="220"></canvas>
+      <canvas id="svTriangle" width="220" height="220"></canvas>
+      <div class="wheel-hint">Pick hue on ring, then pick inside triangle.</div>
+    </div>
+
+    <div class="wheel-footer">
+      <div class="wheel-chip-row">
+        <div id="wheelChip" class="wheel-chip"></div>
+        <div id="wheelHex" class="wheel-hex">#000000</div>
+      </div>
+      <button id="wheelSetBtn" class="btn primary">Use Color</button>
+    </div>
   </div>
 
   <script src="script.js"></script>
