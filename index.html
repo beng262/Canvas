@@ -7,35 +7,36 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <!-- Header -->
   <header>
     <h1>DrawNow!</h1>
   </header>
 
   <!-- Toolbar -->
   <div class="toolbar">
-    <!-- Brush size -->
     <div class="toolbar-item">
       <label for="brushSize">Size</label>
       <input type="range" id="brushSize" min="1" max="80" value="10" />
       <span id="brushSizeValue">10</span>
     </div>
 
-    <!-- Opacity -->
     <div class="toolbar-item">
       <label for="opacity">Opacity</label>
       <input type="range" id="opacity" min="0" max="100" value="100" />
       <span id="opacityValue">100</span>
     </div>
 
-    <!-- Color -->
     <div class="toolbar-item color-row">
       <label for="brushColor">Color</label>
       <input type="color" id="brushColor" value="#000000" />
+
+      <!-- OPEN WHEELS -->
+      <button id="toggleWheel" class="btn small" type="button">
+        Color Wheels
+      </button>
+
       <div id="recentColors"></div>
     </div>
 
-    <!-- Tool -->
     <div class="toolbar-item">
       <label for="tool">Tool</label>
       <select id="tool">
@@ -46,12 +47,14 @@
         <option value="select">Select Area</option>
         <option value="lasso">Lasso Select</option>
         <option value="transform">Transform</option>
+
+
         <option value="cropImage">Crop</option>
+
         <option value="text">Text</option>
       </select>
     </div>
 
-    <!-- Brush -->
     <div class="toolbar-item">
       <label for="brushType">Brush</label>
       <select id="brushType">
@@ -69,7 +72,6 @@
       </select>
     </div>
 
-    <!-- Shape options -->
     <div class="toolbar-item" id="shapeOptions" style="display:none;">
       <label for="shapeType">Shape</label>
       <select id="shapeType">
@@ -84,7 +86,6 @@
       </select>
     </div>
 
-    <!-- Background -->
     <div class="toolbar-item">
       <label for="backgroundPattern">BG</label>
       <select id="backgroundPattern">
@@ -101,11 +102,10 @@
       </select>
     </div>
 
-    <!-- Icon actions -->
     <div class="toolbar-item icon-actions">
-      <button id="clearCanvas" class="icon-btn" title="Clear Canvas" aria-label="Clear Canvas">🧹</button>
-      <button id="undoCanvas" class="icon-btn" title="Undo" aria-label="Undo">↩️</button>
-      <button id="redoCanvas" class="icon-btn" title="Redo" aria-label="Redo">↪️</button>
+      <button id="clearCanvas" class="btn small" type="button">Clear</button>
+      <button id="undoCanvas" class="btn small" type="button">Undo</button>
+      <button id="redoCanvas" class="btn small" type="button">Redo</button>
 
       <select id="downloadFormat" title="Download Format" aria-label="Download Format">
         <option value="png">PNG</option>
@@ -114,16 +114,15 @@
         <option value="jpeg">JPEG</option>
       </select>
 
-      <button id="downloadCanvas" class="icon-btn" title="Download" aria-label="Download">⬇️</button>
-      <button id="flipCanvas" class="icon-btn" title="Flip" aria-label="Flip">↔️</button>
+      <button id="downloadCanvas" class="btn small" type="button">Download</button>
+      <button id="flipCanvas" class="btn small" type="button">Flip</button>
 
-      <button id="addImageButton" class="icon-btn" title="Add Image" aria-label="Add Image">🖼️</button>
+      <button id="addImageButton" class="btn small" type="button">Add Image</button>
       <input type="file" id="addImageInput" accept="image/*" style="display:none;" />
 
-      <button id="darkModeToggle" aria-pressed="false" title="Switch to dark mode">☀️</button>
+      <button id="darkModeToggle" class="btn small" aria-pressed="false" type="button">Light/Dark</button>
     </div>
 
-    <!-- Symmetry -->
     <div class="toolbar-item">
       <label class="check-row">
         <input type="checkbox" id="symmetry" />
@@ -132,24 +131,19 @@
     </div>
   </div>
 
-  <!-- Workspace -->
+  <!-- Workspace: CANVAS LEFT, LAYERS RIGHT -->
   <div class="workspace">
     <div class="canvas-wrap">
       <div class="canvas-container plain" id="canvasContainer">
-
-        <!-- REQUIRED: your script needs this -->
+        <!-- REQUIRED: your script expects drawingCanvas -->
         <canvas id="drawingCanvas" width="800" height="600"></canvas>
 
-        <!-- Lasso preview overlay -->
-        <canvas id="lassoOverlay" class="lasso-overlay" width="800" height="600"></canvas>
+        <!-- Lasso preview -->
+        <canvas id="lassoOverlay" width="800" height="600"></canvas>
 
-        <!-- Selection rectangle -->
         <div id="selectionOverlay" class="selection-overlay" style="display:none;"></div>
-
-        <!-- Crop rectangle -->
         <div id="cropOverlay" class="crop-overlay" style="display:none;"></div>
 
-        <!-- Transform box -->
         <div id="transformBox" class="transform-box" style="display:none;" role="group" aria-label="Transform handles">
           <div class="handle handle-nw" data-handle="nw"></div>
           <div class="handle handle-n"  data-handle="n"></div>
@@ -161,8 +155,53 @@
           <div class="handle handle-w"  data-handle="w"></div>
           <div class="rotate-handle" data-rotate="true" title="Rotate"></div>
         </div>
-
       </div>
+    </div>
+
+    <aside class="side-panel" id="layersPanelHost">
+    </aside>
+  </div>
+
+  <!-- Color Wheels  -->
+  <div id="wheelPanel" class="wheel-panel" style="display:none;">
+    <div class="wheel-header">
+      <div class="wheel-title">Color Wheels</div>
+      <button id="closeWheel" class="btn small" type="button">Close</button>
+    </div>
+
+    <div class="wheel-tabs">
+      <button id="wheelTabCircular" class="tab active" type="button">Circular</button>
+      <button id="wheelTabTriangle" class="tab" type="button">Triangle</button>
+    </div>
+
+    <!-- Circular mode -->
+    <div id="circularWrap" class="wheel-wrap">
+      <canvas id="circleWheel" width="220" height="220"></canvas>
+    </div>
+
+    <!-- Triangle mode -->
+    <div id="triangleWrap" class="wheel-wrap" style="display:none;">
+      <canvas id="triWheel" width="220" height="220"></canvas>
+    </div>
+
+    <!-- Preview row: old + new -->
+    <div class="wheel-preview">
+      <div class="sw">
+        <div class="lbl">Old</div>
+        <div id="oldColorChip" class="chip"></div>
+      </div>
+      <div class="sw">
+        <div class="lbl">New</div>
+        <div id="newColorChip" class="chip"></div>
+      </div>
+      <div class="hex">
+        <div class="lbl">Hex</div>
+        <div id="wheelHex">#000000</div>
+      </div>
+    </div>
+
+    <div class="wheel-footer">
+      <button id="wheelSetBtn" class="btn primary" type="button">Use Color</button>
     </div>
   </div>
 
