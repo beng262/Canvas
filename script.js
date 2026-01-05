@@ -345,7 +345,9 @@ document.addEventListener('DOMContentLoaded', () => {
   layersPanel.style.display = 'flex';
   layersPanel.style.flexDirection = 'column';
   layersPanel.style.gap = '8px';
-  canvasContainer.appendChild(layersPanel);
+  const layersHost = $('layersPanelHost');
+  (layersHost || document.body).appendChild(layersPanel);
+
 
   const layersHeader = document.createElement('div');
   layersHeader.style.display = 'flex';
@@ -451,114 +453,54 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ===== Color wheels button (next to color input) =====
-  let wheelBtn = document.createElement('button');
-  wheelBtn.type = 'button';
-  wheelBtn.title = 'Color wheels';
-  wheelBtn.style.marginLeft = '8px';
-  wheelBtn.style.border = 'none';
-  wheelBtn.style.borderRadius = '8px';
-  wheelBtn.style.padding = '6px 10px';
-  wheelBtn.style.cursor = 'pointer';
-  wheelBtn.style.background = '#FFB2F7';
-  wheelBtn.style.color = '#fff';
-  wheelBtn.textContent = 'Wheels';
+   const toggleWheelBtn = $('toggleWheel');
+  const wheelPanel = $('wheelPanel');
+  const closeWheelBtn = $('closeWheel');
 
-  // Place next to color input if possible
-  if (brushColorInput && brushColorInput.parentElement) {
-    brushColorInput.parentElement.appendChild(wheelBtn);
+  const wheelTabCircular = $('wheelTabCircular');
+  const wheelTabTriangle = $('wheelTabTriangle');
+
+  const circularWrap = $('circularWrap');
+  const triangleWrap = $('triangleWrap');
+
+  const circularWheel = $('circularWheel');
+  const valueSlider = $('valueSlider');
+
+  const hueRing = $('hueRing');
+  const svTriangle = $('svTriangle');
+
+  const wheelChip = $('wheelChip');
+  const wheelHex = $('wheelHex');
+  const wheelSetBtn = $('wheelSetBtn');
+
+  let oldChip = document.getElementById('wheelOldChip');
+  if (!oldChip && wheelChip && wheelChip.parentElement) {
+    oldChip = document.createElement('div');
+    oldChip.id = 'wheelOldChip';
+    oldChip.style.width = wheelChip.style.width || '34px';
+    oldChip.style.height = wheelChip.style.height || '34px';
+    oldChip.style.borderRadius = wheelChip.style.borderRadius || '12px';
+    oldChip.style.border = wheelChip.style.border || '1px solid rgba(0,0,0,0.12)';
+    oldChip.style.background = '#000000';
+    wheelChip.parentElement.insertBefore(oldChip, wheelChip);
   }
 
-  // ===== Color wheel modal (circular + triangle) =====
-  const wheelModal = document.createElement('div');
-  wheelModal.id = 'wheelModal';
-  wheelModal.style.position = 'fixed';
-  wheelModal.style.inset = '0';
-  wheelModal.style.display = 'none';
-  wheelModal.style.alignItems = 'center';
-  wheelModal.style.justifyContent = 'center';
-  wheelModal.style.zIndex = '9999';
-  wheelModal.style.background = 'rgba(0,0,0,0.45)';
-  document.body.appendChild(wheelModal);
+  let wheelMode = 'circular';
+  let pickedHex = brushColorInput ? brushColorInput.value : '#000000';
 
-  const wheelCard = document.createElement('div');
-  wheelCard.style.width = '360px';
-  wheelCard.style.maxWidth = '92vw';
-  wheelCard.style.borderRadius = '14px';
-  wheelCard.style.padding = '12px';
-  wheelCard.style.background = document.body.classList.contains('dark') ? '#111827' : '#ffffff';
-  wheelCard.style.boxShadow = '0 12px 30px rgba(0,0,0,0.25)';
-  wheelCard.style.display = 'flex';
-  wheelCard.style.flexDirection = 'column';
-  wheelCard.style.gap = '10px';
+  let circHue = 0;
+  let circSat = 0;
+  let circVal = 1;
 
-  const wheelTitle = document.createElement('div');
-  wheelTitle.textContent = 'Color wheels';
-  wheelTitle.style.fontSize = '14px';
-  wheelTitle.style.fontWeight = '800';
-  wheelTitle.style.color = document.body.classList.contains('dark') ? '#e5e7eb' : '#111827';
+  let triHue = 0;
+  let triSV = { s: 1, v: 1 };
 
-  const wheelRow = document.createElement('div');
-  wheelRow.style.display = 'grid';
-  wheelRow.style.gridTemplateColumns = '1fr 1fr';
-  wheelRow.style.gap = '10px';
+  function clamp01(n) { return Math.max(0, Math.min(1, n)); }
 
-  const circleWheel = document.createElement('canvas');
-  circleWheel.width = 160;
-  circleWheel.height = 160;
-  circleWheel.style.width = '160px';
-  circleWheel.style.height = '160px';
-  circleWheel.style.borderRadius = '999px';
-  circleWheel.style.cursor = 'crosshair';
-
-  const triWheel = document.createElement('canvas');
-  triWheel.width = 160;
-  triWheel.height = 160;
-  triWheel.style.width = '160px';
-  triWheel.style.height = '160px';
-  triWheel.style.borderRadius = '12px';
-  triWheel.style.cursor = 'crosshair';
-
-  wheelRow.appendChild(circleWheel);
-  wheelRow.appendChild(triWheel);
-
-  const wheelBtnsRow = document.createElement('div');
-  wheelBtnsRow.style.display = 'flex';
-  wheelBtnsRow.style.justifyContent = 'flex-end';
-  wheelBtnsRow.style.gap = '8px';
-
-  const btnCancelWheel = document.createElement('button');
-  btnCancelWheel.type = 'button';
-  btnCancelWheel.textContent = 'Close';
-  btnCancelWheel.title = 'Close';
-  btnCancelWheel.style.border = 'none';
-  btnCancelWheel.style.borderRadius = '10px';
-  btnCancelWheel.style.padding = '8px 12px';
-  btnCancelWheel.style.cursor = 'pointer';
-  btnCancelWheel.style.background = document.body.classList.contains('dark') ? '#374151' : '#e5e7eb';
-  btnCancelWheel.style.color = document.body.classList.contains('dark') ? '#fff' : '#111827';
-
-  const btnUseWheel = document.createElement('button');
-  btnUseWheel.type = 'button';
-  btnUseWheel.textContent = 'Use color';
-  btnUseWheel.title = 'Use color';
-  btnUseWheel.style.border = 'none';
-  btnUseWheel.style.borderRadius = '10px';
-  btnUseWheel.style.padding = '8px 12px';
-  btnUseWheel.style.cursor = 'pointer';
-  btnUseWheel.style.background = '#FFB2F7';
-  btnUseWheel.style.color = '#fff';
-
-  wheelBtnsRow.appendChild(btnCancelWheel);
-  wheelBtnsRow.appendChild(btnUseWheel);
-
-  wheelCard.appendChild(wheelTitle);
-  wheelCard.appendChild(wheelRow);
-  wheelCard.appendChild(wheelBtnsRow);
-  wheelModal.appendChild(wheelCard);
-
-  let wheelHue = 0; // 0..360
-  let wheelSV = { s: 1, v: 1 };
-  let wheelPickedHex = '#000000';
+  function rgbToHex(r, g, b) {
+    const toH = (n) => Math.max(0, Math.min(255, n)).toString(16).padStart(2, '0');
+    return `#${toH(r)}${toH(g)}${toH(b)}`;
+  }
 
   function hsvToRgb(h, s, v) {
     h = (h % 360 + 360) % 360;
@@ -578,38 +520,84 @@ document.addEventListener('DOMContentLoaded', () => {
       b: Math.round((bp + m) * 255),
     };
   }
-  function rgbToHex(r, g, b) {
-    const toH = (n) => n.toString(16).padStart(2, '0');
-    return `#${toH(r)}${toH(g)}${toH(b)}`;
+
+  function setPickedHex(hex) {
+    pickedHex = hex || '#000000';
+    if (wheelChip) wheelChip.style.background = pickedHex;
+    if (wheelHex) wheelHex.textContent = pickedHex.toUpperCase();
   }
 
-  function drawCircleWheel() {
-    const cctx = circleWheel.getContext('2d');
-    const cx = circleWheel.width / 2;
-    const cy = circleWheel.height / 2;
-    const r = circleWheel.width / 2;
+  function openWheel() {
+    if (!wheelPanel) return;
+    wheelPanel.style.display = 'block';
+    const current = brushColorInput ? brushColorInput.value : '#000000';
+    if (oldChip) oldChip.style.background = current;
+    setPickedHex(current);
+    syncWheelUI();
+    drawCircularWheel();
+    drawHueRing();
+    drawSVTriangle();
+  }
 
-    const img = cctx.createImageData(circleWheel.width, circleWheel.height);
+  function closeWheel() {
+    if (!wheelPanel) return;
+    wheelPanel.style.display = 'none';
+  }
+
+  function setWheelMode(mode) {
+    wheelMode = mode === 'triangle' ? 'triangle' : 'circular';
+    syncWheelUI();
+    drawCircularWheel();
+    drawHueRing();
+    drawSVTriangle();
+  }
+
+  function syncWheelUI() {
+    if (wheelTabCircular) wheelTabCircular.classList.toggle('active', wheelMode === 'circular');
+    if (wheelTabTriangle) wheelTabTriangle.classList.toggle('active', wheelMode === 'triangle');
+
+    if (circularWrap) circularWrap.style.display = wheelMode === 'circular' ? 'grid' : 'none';
+    if (triangleWrap) triangleWrap.style.display = wheelMode === 'triangle' ? 'grid' : 'none';
+
+    if (wheelMode === 'circular') {
+      if (valueSlider) valueSlider.value = String(Math.round(clamp01(circVal) * 100));
+      const rgb = hsvToRgb(circHue, circSat, circVal);
+      setPickedHex(rgbToHex(rgb.r, rgb.g, rgb.b));
+    } else {
+      const rgb = hsvToRgb(triHue, triSV.s, triSV.v);
+      setPickedHex(rgbToHex(rgb.r, rgb.g, rgb.b));
+    }
+  }
+
+  function drawCircularWheel() {
+    if (!circularWheel) return;
+    const ctx = circularWheel.getContext('2d');
+    const w = circularWheel.width;
+    const h = circularWheel.height;
+    const cx = w / 2;
+    const cy = h / 2;
+    const r = Math.min(w, h) / 2;
+
+    const img = ctx.createImageData(w, h);
     const data = img.data;
 
-    for (let y = 0; y < circleWheel.height; y++) {
-      for (let x = 0; x < circleWheel.width; x++) {
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
         const dx = x - cx;
         const dy = y - cy;
         const d = Math.hypot(dx, dy);
-        const idx = (y * circleWheel.width + x) * 4;
+        const idx = (y * w + x) * 4;
 
         if (d > r) {
           data[idx + 3] = 0;
           continue;
         }
 
-        const angle = Math.atan2(dy, dx);
-        const hue = ((angle * 180) / Math.PI + 360) % 360;
-        const sat = clamp(d / r, 0, 1);
-        const val = 1;
+        const ang = Math.atan2(dy, dx);
+        const hue = ((ang * 180) / Math.PI + 360) % 360;
+        const sat = clamp01(d / r);
+        const rgb = hsvToRgb(hue, sat, clamp01(circVal));
 
-        const rgb = hsvToRgb(hue, sat, val);
         data[idx] = rgb.r;
         data[idx + 1] = rgb.g;
         data[idx + 2] = rgb.b;
@@ -617,126 +605,29 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    cctx.putImageData(img, 0, 0);
+    ctx.putImageData(img, 0, 0);
 
-    // Marker
-    const markerR = r * clamp(wheelSV.s, 0, 1);
-    const theta = (wheelHue * Math.PI) / 180;
-    const mx = cx + Math.cos(theta) * markerR;
-    const my = cy + Math.sin(theta) * markerR;
+    const mr = r * clamp01(circSat);
+    const theta = (circHue * Math.PI) / 180;
+    const mx = cx + Math.cos(theta) * mr;
+    const my = cy + Math.sin(theta) * mr;
 
-    cctx.save();
-    cctx.strokeStyle = '#111827';
-    cctx.lineWidth = 2;
-    cctx.beginPath();
-    cctx.arc(mx, my, 6, 0, Math.PI * 2);
-    cctx.stroke();
-    cctx.strokeStyle = '#ffffff';
-    cctx.lineWidth = 1;
-    cctx.beginPath();
-    cctx.arc(mx, my, 7.5, 0, Math.PI * 2);
-    cctx.stroke();
-    cctx.restore();
+    ctx.save();
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(mx, my, 7, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(mx, my, 8.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
   }
 
-  function drawTriangleWheel() {
-    const tctx = triWheel.getContext('2d');
-    tctx.clearRect(0, 0, triWheel.width, triWheel.height);
-
-    // Triangle points
-    const pad = 14;
-    const A = { x: triWheel.width / 2, y: pad }; // top
-    const B = { x: pad, y: triWheel.height - pad }; // bottom left
-    const C = { x: triWheel.width - pad, y: triWheel.height - pad }; // bottom right
-
-    // Build image
-    const img = tctx.createImageData(triWheel.width, triWheel.height);
-    const data = img.data;
-
-    // Barycentric helpers
-    const denom =
-      (B.y - C.y) * (A.x - C.x) +
-      (C.x - B.x) * (A.y - C.y);
-
-    function bary(x, y) {
-      const w1 =
-        ((B.y - C.y) * (x - C.x) + (C.x - B.x) * (y - C.y)) / denom;
-      const w2 =
-        ((C.y - A.y) * (x - C.x) + (A.x - C.x) * (y - C.y)) / denom;
-      const w3 = 1 - w1 - w2;
-      return { w1, w2, w3 };
-    }
-
-    // Colors at vertices:
-    // A = pure hue color (S=1,V=1)
-    // B = white (S=0,V=1)
-    // C = black (V=0)
-    const hueRGB = hsvToRgb(wheelHue, 1, 1);
-
-    for (let y = 0; y < triWheel.height; y++) {
-      for (let x = 0; x < triWheel.width; x++) {
-        const idx = (y * triWheel.width + x) * 4;
-        const { w1, w2, w3 } = bary(x, y);
-
-        if (w1 < 0 || w2 < 0 || w3 < 0) {
-          data[idx + 3] = 0;
-          continue;
-        }
-
-        // Interpolate RGB between hue, white, black
-        const r = w1 * hueRGB.r + w2 * 255 + w3 * 0;
-        const g = w1 * hueRGB.g + w2 * 255 + w3 * 0;
-        const b = w1 * hueRGB.b + w2 * 255 + w3 * 0;
-
-        data[idx] = Math.round(r);
-        data[idx + 1] = Math.round(g);
-        data[idx + 2] = Math.round(b);
-        data[idx + 3] = 255;
-      }
-    }
-
-    tctx.putImageData(img, 0, 0);
-
-    // Marker from wheelSV (approx mapping):
-    // We map s,v to barycentric:
-    // v controls toward black (C); (1-v) toward C
-    // s controls away from white (B) toward hue (A)
-    const v = clamp(wheelSV.v, 0, 1);
-    const s = clamp(wheelSV.s, 0, 1);
-
-    const w3 = 1 - v; // black weight
-    const remain = 1 - w3;
-    const w1 = remain * s; // hue weight
-    const w2 = remain * (1 - s); // white weight
-
-    const mx = w1 * A.x + w2 * B.x + w3 * C.x;
-    const my = w1 * A.y + w2 * B.y + w3 * C.y;
-
-    tctx.save();
-    tctx.strokeStyle = '#111827';
-    tctx.lineWidth = 2;
-    tctx.beginPath();
-    tctx.arc(mx, my, 6, 0, Math.PI * 2);
-    tctx.stroke();
-    tctx.strokeStyle = '#ffffff';
-    tctx.lineWidth = 1;
-    tctx.beginPath();
-    tctx.arc(mx, my, 7.5, 0, Math.PI * 2);
-    tctx.stroke();
-    tctx.restore();
-  }
-
-  function openWheelModal() {
-    wheelModal.style.display = 'flex';
-    drawCircleWheel();
-    drawTriangleWheel();
-  }
-  function closeWheelModal() {
-    wheelModal.style.display = 'none';
-  }
-
-  function pickFromCircle(evt) {
-    const r = circleWheel.getBoundingClientRect();
+  function pickCircular(evt) {
+    const r = circularWheel.getBoundingClientRect();
     const x = evt.clientX - r.left;
     const y = evt.clientY - r.top;
     const cx = r.width / 2;
@@ -744,72 +635,250 @@ document.addEventListener('DOMContentLoaded', () => {
     const dx = x - cx;
     const dy = y - cy;
     const distR = Math.hypot(dx, dy);
-    const radius = r.width / 2;
+    const radius = Math.min(r.width, r.height) / 2;
 
-    const sat = clamp(distR / radius, 0, 1);
+    const sat = clamp01(distR / radius);
     const ang = Math.atan2(dy, dx);
     const hue = ((ang * 180) / Math.PI + 360) % 360;
 
-    wheelHue = hue;
-    wheelSV.s = sat;
-    wheelSV.v = 1;
+    circHue = hue;
+    circSat = sat;
 
-    const rgb = hsvToRgb(wheelHue, wheelSV.s, wheelSV.v);
-    wheelPickedHex = rgbToHex(rgb.r, rgb.g, rgb.b);
-
-    drawCircleWheel();
-    drawTriangleWheel();
+    const rgb = hsvToRgb(circHue, circSat, circVal);
+    setPickedHex(rgbToHex(rgb.r, rgb.g, rgb.b));
+    drawCircularWheel();
   }
 
-  function pickFromTriangle(evt) {
-    const tctx = triWheel.getContext('2d');
-    const r = triWheel.getBoundingClientRect();
-    const x = Math.floor(((evt.clientX - r.left) / r.width) * triWheel.width);
-    const y = Math.floor(((evt.clientY - r.top) / r.height) * triWheel.height);
+  function drawHueRing() {
+    if (!hueRing) return;
+    const ctx = hueRing.getContext('2d');
+    const w = hueRing.width;
+    const h = hueRing.height;
+    const cx = w / 2;
+    const cy = h / 2;
+    const outer = Math.min(w, h) / 2;
+    const inner = outer * 0.72;
 
-    const px = tctx.getImageData(x, y, 1, 1).data;
+    ctx.clearRect(0, 0, w, h);
+
+    const img = ctx.createImageData(w, h);
+    const data = img.data;
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const dx = x - cx;
+        const dy = y - cy;
+        const d = Math.hypot(dx, dy);
+        const idx = (y * w + x) * 4;
+
+        if (d > outer || d < inner) {
+          data[idx + 3] = 0;
+          continue;
+        }
+
+        const ang = Math.atan2(dy, dx);
+        const hue = ((ang * 180) / Math.PI + 360) % 360;
+        const rgb = hsvToRgb(hue, 1, 1);
+
+        data[idx] = rgb.r;
+        data[idx + 1] = rgb.g;
+        data[idx + 2] = rgb.b;
+        data[idx + 3] = 255;
+      }
+    }
+
+    ctx.putImageData(img, 0, 0);
+
+    const theta = (triHue * Math.PI) / 180;
+    const mr = (outer + inner) / 2;
+    const mx = cx + Math.cos(theta) * mr;
+    const my = cy + Math.sin(theta) * mr;
+
+    ctx.save();
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(mx, my, 7, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(mx, my, 8.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function pickHueRing(evt) {
+    const r = hueRing.getBoundingClientRect();
+    const x = evt.clientX - r.left;
+    const y = evt.clientY - r.top;
+    const cx = r.width / 2;
+    const cy = r.height / 2;
+    const dx = x - cx;
+    const dy = y - cy;
+
+    const ang = Math.atan2(dy, dx);
+    triHue = ((ang * 180) / Math.PI + 360) % 360;
+
+    drawHueRing();
+    drawSVTriangle();
+
+    const rgb = hsvToRgb(triHue, triSV.s, triSV.v);
+    setPickedHex(rgbToHex(rgb.r, rgb.g, rgb.b));
+  }
+
+  function drawSVTriangle() {
+    if (!svTriangle) return;
+    const ctx = svTriangle.getContext('2d');
+    const w = svTriangle.width;
+    const h = svTriangle.height;
+
+    ctx.clearRect(0, 0, w, h);
+
+    const pad = 16;
+    const A = { x: w / 2, y: pad };
+    const B = { x: pad, y: h - pad };
+    const C = { x: w - pad, y: h - pad };
+
+    const hueRGB = hsvToRgb(triHue, 1, 1);
+
+    const img = ctx.createImageData(w, h);
+    const data = img.data;
+
+    const denom = (B.y - C.y) * (A.x - C.x) + (C.x - B.x) * (A.y - C.y);
+
+    function bary(x, y) {
+      const w1 = ((B.y - C.y) * (x - C.x) + (C.x - B.x) * (y - C.y)) / denom;
+      const w2 = ((C.y - A.y) * (x - C.x) + (A.x - C.x) * (y - C.y)) / denom;
+      const w3 = 1 - w1 - w2;
+      return { w1, w2, w3 };
+    }
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const idx = (y * w + x) * 4;
+        const { w1, w2, w3 } = bary(x, y);
+
+        if (w1 < 0 || w2 < 0 || w3 < 0) {
+          data[idx + 3] = 0;
+          continue;
+        }
+
+        const rr = w1 * hueRGB.r + w2 * 255 + w3 * 0;
+        const gg = w1 * hueRGB.g + w2 * 255 + w3 * 0;
+        const bb = w1 * hueRGB.b + w2 * 255 + w3 * 0;
+
+        data[idx] = Math.round(rr);
+        data[idx + 1] = Math.round(gg);
+        data[idx + 2] = Math.round(bb);
+        data[idx + 3] = 255;
+      }
+    }
+
+    ctx.putImageData(img, 0, 0);
+
+    const v = clamp01(triSV.v);
+    const s = clamp01(triSV.s);
+
+    const w3 = 1 - v;
+    const remain = 1 - w3;
+    const w1 = remain * s;
+    const w2 = remain * (1 - s);
+
+    const mx = w1 * A.x + w2 * B.x + w3 * C.x;
+    const my = w1 * A.y + w2 * B.y + w3 * C.y;
+
+    ctx.save();
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(mx, my, 7, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(mx, my, 8.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function pickSVTriangle(evt) {
+    const ctx = svTriangle.getContext('2d');
+    const r = svTriangle.getBoundingClientRect();
+    const x = Math.floor(((evt.clientX - r.left) / r.width) * svTriangle.width);
+    const y = Math.floor(((evt.clientY - r.top) / r.height) * svTriangle.height);
+
+    if (x < 0 || y < 0 || x >= svTriangle.width || y >= svTriangle.height) return;
+
+    const px = ctx.getImageData(x, y, 1, 1).data;
     if (px[3] === 0) return;
 
-    wheelPickedHex = rgbToHex(px[0], px[1], px[2]);
-
-    // Approx inverse mapping for marker:
     const maxc = Math.max(px[0], px[1], px[2]);
     const minc = Math.min(px[0], px[1], px[2]);
     const v = maxc / 255;
     const s = maxc === 0 ? 0 : (maxc - minc) / maxc;
-    wheelSV = { s: clamp(s, 0, 1), v: clamp(v, 0, 1) };
 
-    drawTriangleWheel();
-    drawCircleWheel();
+    triSV = { s: clamp01(s), v: clamp01(v) };
+
+    const rgb = hsvToRgb(triHue, triSV.s, triSV.v);
+    setPickedHex(rgbToHex(rgb.r, rgb.g, rgb.b));
+    drawSVTriangle();
   }
 
-  on(wheelBtn, 'click', openWheelModal);
-  on(btnCancelWheel, 'click', closeWheelModal);
-  on(wheelModal, 'click', (e) => {
-    if (e.target === wheelModal) closeWheelModal();
-  });
-  on(circleWheel, 'pointerdown', (e) => {
-    circleWheel.setPointerCapture(e.pointerId);
-    pickFromCircle(e);
-  });
-  on(circleWheel, 'pointermove', (e) => {
-    if (e.buttons) pickFromCircle(e);
-  });
-  on(triWheel, 'pointerdown', (e) => {
-    triWheel.setPointerCapture(e.pointerId);
-    pickFromTriangle(e);
-  });
-  on(triWheel, 'pointermove', (e) => {
-    if (e.buttons) pickFromTriangle(e);
+  on(toggleWheelBtn, 'click', openWheel);
+  on(closeWheelBtn, 'click', closeWheel);
+
+  on(wheelTabCircular, 'click', () => setWheelMode('circular'));
+  on(wheelTabTriangle, 'click', () => setWheelMode('triangle'));
+
+  on(valueSlider, 'input', () => {
+    circVal = clamp01((parseInt(valueSlider.value, 10) || 100) / 100);
+    const rgb = hsvToRgb(circHue, circSat, circVal);
+    setPickedHex(rgbToHex(rgb.r, rgb.g, rgb.b));
+    drawCircularWheel();
   });
 
-  on(btnUseWheel, 'click', () => {
+  if (circularWheel) {
+    on(circularWheel, 'pointerdown', (e) => {
+      circularWheel.setPointerCapture(e.pointerId);
+      pickCircular(e);
+    });
+    on(circularWheel, 'pointermove', (e) => {
+      if (e.buttons) pickCircular(e);
+    });
+  }
+
+  if (hueRing) {
+    on(hueRing, 'pointerdown', (e) => {
+      hueRing.setPointerCapture(e.pointerId);
+      pickHueRing(e);
+    });
+    on(hueRing, 'pointermove', (e) => {
+      if (e.buttons) pickHueRing(e);
+    });
+  }
+
+  if (svTriangle) {
+    on(svTriangle, 'pointerdown', (e) => {
+      svTriangle.setPointerCapture(e.pointerId);
+      pickSVTriangle(e);
+    });
+    on(svTriangle, 'pointermove', (e) => {
+      if (e.buttons) pickSVTriangle(e);
+    });
+  }
+
+  on(wheelSetBtn, 'click', () => {
     if (brushColorInput) {
-      brushColorInput.value = wheelPickedHex || '#000000';
+      brushColorInput.value = pickedHex || '#000000';
       addRecentColor(brushColorInput.value);
     }
-    closeWheelModal();
+    closeWheel();
   });
+
+  if (wheelChip) wheelChip.style.background = pickedHex;
+  if (wheelHex) wheelHex.textContent = (pickedHex || '#000000').toUpperCase();
+
 
   // ===== Canvas sizing + New canvas modal (presets + custom) =====
   const newCanvasBtn = document.createElement('button');
@@ -1840,15 +1909,30 @@ document.addEventListener('DOMContentLoaded', () => {
   // ===== Overlay / Transform =====
   function updateTransformBox() {
     if (!transformBox) return;
+
     if (!overlayObj || currentTool !== 'transform') {
       transformBox.style.display = 'none';
       return;
     }
+
+    // Scale factor between canvas pixels and CSS pixels
+    const r = inputOverlay.getBoundingClientRect();
+    const sx = r.width / canvasW;
+    const sy = r.height / canvasH;
+
     transformBox.style.display = 'block';
-    transformBox.style.width = `${overlayObj.w}px`;
-    transformBox.style.height = `${overlayObj.h}px`;
-    transformBox.style.transform = `translate(${overlayObj.x}px, ${overlayObj.y}px) rotate(${overlayObj.angle || 0}rad)`;
+    transformBox.style.width = `${overlayObj.w * sx}px`;
+    transformBox.style.height = `${overlayObj.h * sy}px`;
+
+    // Use left/top in CSS pixels
+    transformBox.style.left = `${overlayObj.x * sx}px`;
+    transformBox.style.top = `${overlayObj.y * sy}px`;
+
+    // Rotate around top-left (matches how you draw overlay: translate(x,y) rotate() drawImage(0,0))
+    transformBox.style.transformOrigin = 'top left';
+    transformBox.style.transform = `rotate(${overlayObj.angle || 0}rad)`;
   }
+
 
   function renderOverlayOnly() {
     redrawAll();
