@@ -16,8 +16,13 @@ document.addEventListener('DOMContentLoaded', () => {
     console.error('Missing #canvasContainer or #drawingCanvas');
     return;
   }
+  // Make sure absolutely-positioned overlay canvases align correctly
+  canvasContainer.style.position = canvasContainer.style.position || 'relative';
+  canvasContainer.style.width = `${displayCanvas.width}px`;
+  canvasContainer.style.height = `${displayCanvas.height}px`;
 
-  // ===== UI (existing IDs from your HTML) =====
+
+  // ===== UI =====
   const brushSizeInput = $('brushSize');
   const brushSizeValue = $('brushSizeValue');
   const opacityInput = $('opacity');
@@ -105,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let undoStack = [];
   let redoStack = [];
 
-  // ===== Theme (your existing logic) =====
+  // ===== Theme =====
   const THEME_KEY = 'drawnow-theme';
   function applyTheme(mode) {
     const isDark = mode === 'dark';
@@ -129,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   initTheme();
 
-  // ===== Create input overlay canvas (captures all pointer events reliably) =====
+  // ===== Create input overlay =====
   const inputOverlay = document.createElement('canvas');
   inputOverlay.id = 'inputOverlay';
   inputOverlay.width = canvasW;
@@ -255,11 +260,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   function canvasPointFromEvent(evt) {
     const r = inputOverlay.getBoundingClientRect();
+    // Clamp to last valid pixel to avoid out-of-bounds indices (esp. for flood fill)
     return {
-      x: clamp(evt.clientX - r.left, 0, canvasW),
-      y: clamp(evt.clientY - r.top, 0, canvasH),
+      x: clamp(evt.clientX - r.left, 0, Math.max(0, canvasW - 1)),
+      y: clamp(evt.clientY - r.top, 0, Math.max(0, canvasH - 1)),
     };
   }
+
 
   // ===== Color utils =====
   function hexToRgba(hex, opacity100) {
@@ -766,7 +773,6 @@ document.addEventListener('DOMContentLoaded', () => {
     wheelPickedHex = rgbToHex(px[0], px[1], px[2]);
 
     // Approx inverse mapping for marker:
-    // We'll estimate v by brightness and s by distance from white along hue direction (simple approx).
     const maxc = Math.max(px[0], px[1], px[2]);
     const minc = Math.min(px[0], px[1], px[2]);
     const v = maxc / 255;
@@ -993,7 +999,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function rebuildLayerList() {
     layerList.innerHTML = '';
 
-    // UI: show top layer first (most understandable)
+    // UI: show top layer first 
     for (let uiRow = layers.length - 1; uiRow >= 0; uiRow--) {
       const i = uiRow; // actual index
       const layer = layers[i];
@@ -1240,7 +1246,7 @@ document.addEventListener('DOMContentLoaded', () => {
     redrawAll();
   }
 
-  // ===== Layer operations (undoable) =====
+  // ===== Layer operations =====
   function addLayer() {
     if (layers.length >= MAX_LAYERS) return;
     saveState();
@@ -1292,7 +1298,7 @@ document.addEventListener('DOMContentLoaded', () => {
   on(btnDeleteLayer, 'click', deleteActiveLayer);
   on(btnMergeDown, 'click', mergeDown);
 
-  // ===== Clear canvas (undoable, clears all layers) =====
+  // ===== Clear canvas =====
   function clearAllLayers() {
     saveState();
     if (overlayObj) overlayObj = null;
@@ -1352,7 +1358,7 @@ document.addEventListener('DOMContentLoaded', () => {
     redrawAll();
   });
 
-  // ===== Brushes (more distinct, with spacing support) =====
+  // ===== Brushes =====
   function brushParams() {
     const size = clamp(parseInt(brushSizeInput ? brushSizeInput.value : '10', 10) || 10, 1, 200);
     const opacity = clamp(parseFloat(opacityInput ? opacityInput.value : '100') || 100, 0, 100);
@@ -1639,10 +1645,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!L) return;
 
     const w = canvasW, h = canvasH;
+
+  // Guard: prevent edge clicks (x===w or y===h) from indexing outside the image buffer
+    const ix = Math.floor(x);
+    const iy = Math.floor(y);
+    if (ix < 0 || iy < 0 || ix >= w || iy >= h) return;
+
     const img = L.ctx.getImageData(0, 0, w, h);
     const data = img.data;
 
-    const idx0 = (Math.floor(y) * w + Math.floor(x)) * 4;
+    const idx0 = (iy * w + ix) * 4;
     const target = [data[idx0], data[idx0 + 1], data[idx0 + 2], data[idx0 + 3]];
     const fill = hexToRgbaArray(hex, opacity100);
 
