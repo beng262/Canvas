@@ -1389,6 +1389,9 @@ if (svTriangle) {
       lassoOverlay.height = h;
     }
 
+    canvasContainer.style.width = `${w}px`;
+    canvasContainer.style.height = `${h}px`;
+
     // Scale existing layers into new size
     const oldLayers = layers.map((L) => {
       const tmp = document.createElement('canvas');
