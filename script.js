@@ -327,27 +327,55 @@ document.addEventListener('DOMContentLoaded', () => {
     shapeOptionsDiv.style.display = currentTool === 'shape' ? 'inline-block' : 'none';
   }
 
-  // ===== Build layers panel (compact, right side, rename, add/delete/merge) =====
-  const layersPanel = document.createElement('div');
-  layersPanel.id = 'layersPanel';
-  layersPanel.style.position = 'absolute';
-  layersPanel.style.right = '8px';
-  layersPanel.style.top = '8px';
-  layersPanel.style.zIndex = '20';
-  layersPanel.style.width = '190px';
-  layersPanel.style.maxHeight = 'calc(100% - 16px)';
-  layersPanel.style.overflow = 'hidden';
-  layersPanel.style.borderRadius = '10px';
-  layersPanel.style.boxShadow = '0 6px 18px rgba(0,0,0,0.18)';
-  layersPanel.style.background = document.body.classList.contains('dark') ? 'rgba(17,24,39,0.92)' : 'rgba(255,255,255,0.92)';
-  layersPanel.style.backdropFilter = 'blur(6px)';
-  layersPanel.style.padding = '8px';
-  layersPanel.style.display = 'flex';
-  layersPanel.style.flexDirection = 'column';
-  layersPanel.style.gap = '8px';
-  const layersHost = document.getElementById('layersPanelHost');
-  (layersHost || canvasContainer).appendChild(layersPanel);
+// ===== Build layers panel (single instance, NOT duplicated) =====
+function getOrCreateLayersPanel() {
+  // If script reruns / hot reload: reuse existing panel instead of creating another
+  let panel = document.getElementById('layersPanel');
+  if (panel) return panel;
 
+  panel = document.createElement('div');
+  panel.id = 'layersPanel';
+
+  // Prefer hosting OUTSIDE the canvas if a host exists
+  const layersHost = document.getElementById('layersPanelHost');
+  if (layersHost) {
+    // Put it in the host (sidebar area)
+    layersHost.appendChild(panel);
+    panel.style.position = 'relative';
+    panel.style.right = 'auto';
+    panel.style.top = 'auto';
+    panel.style.margin = '8px';
+  } else {
+    // Fallback: overlay inside canvas container (but at least single instance)
+    (canvasContainer || document.body).appendChild(panel);
+    panel.style.position = 'absolute';
+    panel.style.right = '8px';
+    panel.style.top = '8px';
+  }
+
+  panel.style.zIndex = '20';
+  panel.style.width = '190px';
+  panel.style.maxHeight = 'calc(100% - 16px)';
+  panel.style.overflow = 'hidden';
+  panel.style.borderRadius = '10px';
+  panel.style.boxShadow = '0 6px 18px rgba(0,0,0,0.18)';
+  panel.style.background = document.body.classList.contains('dark')
+    ? 'rgba(17,24,39,0.92)'
+    : 'rgba(255,255,255,0.92)';
+  panel.style.backdropFilter = 'blur(6px)';
+  panel.style.padding = '8px';
+  panel.style.display = 'flex';
+  panel.style.flexDirection = 'column';
+  panel.style.gap = '8px';
+  panel.style.pointerEvents = 'auto';
+
+  return panel;
+}
+
+const layersPanel = getOrCreateLayersPanel();
+
+// Clear panel content if script reruns (prevents duplicate header/buttons inside same panel)
+layersPanel.innerHTML = '';
 
 
   const layersHeader = document.createElement('div');
@@ -1339,8 +1367,13 @@ if (svTriangle) {
   function resizeAll(w, h, silent = false) {
     if (!silent) saveState();
 
-    canvasW = w;
-    canvasH = h;
+    displayCanvas.width = w;
+    displayCanvas.height = h;
+
+
+    canvasContainer.style.width = `${w}px`;
+    canvasContainer.style.height = `${h}px`;
+
 
     displayCanvas.width = w;
     displayCanvas.height = h;
@@ -2175,12 +2208,55 @@ if (svTriangle) {
   }
 
   // ===== Crop tool =====
-  function cropOverlayToRect(rect) {
-    if (!overlayObj) return;
-    if (Math.abs(overlayObj.angle || 0) > 0.0001) {
-      alert('Crop supports only non-rotated overlay. Please set rotation to 0 first.');
-      return;
-    }
+// Crops the whole document to the rectangle, and RESIZES the canvas.
+// Everything inside rect becomes the new canvas, shifted to (0,0).
+function cropCanvasToRect(rect) {
+  if (!rect) return;
+
+  const x = Math.floor(Math.min(rect.x, rect.x + rect.w));
+  const y = Math.floor(Math.min(rect.y, rect.y + rect.h));
+  const w = Math.floor(Math.abs(rect.w));
+  const h = Math.floor(Math.abs(rect.h));
+
+  if (w < 2 || h < 2) return;
+
+  // Clamp to canvas bounds
+  const cx = clamp(x, 0, canvasW - 1);
+  const cy = clamp(y, 0, canvasH - 1);
+  const cw = clamp(w, 1, canvasW - cx);
+  const ch = clamp(h, 1, canvasH - cy);
+
+  // Commit overlay so it becomes part of layers before cropping
+  if (overlayObj) commitOverlay();
+
+  saveState();
+
+  // For each layer: extract rect and shift to 0,0
+  layers.forEach((L) => {
+    const off = document.createElement('canvas');
+    off.width = cw;
+    off.height = ch;
+    const oc = off.getContext('2d');
+
+    oc.drawImage(L.canvas, cx, cy, cw, ch, 0, 0, cw, ch);
+
+    // Resize layer canvas to new size and paint extracted pixels
+    L.canvas.width = cw;
+    L.canvas.height = ch;
+    L.ctx = L.canvas.getContext('2d');
+    L.ctx.clearRect(0, 0, cw, ch);
+    L.ctx.drawImage(off, 0, 0);
+  });
+
+  // Now resize the rest of the system to match new size (silent: we already saveState)
+  resizeAll(cw, ch, true);
+
+  // Clean crop UI state
+  hideCropOverlay();
+  cropRect = null;
+
+  redrawAll();
+}
 
     // Intersect crop rect with overlay bounds (canvas coords)
     const ox1 = overlayObj.x;
@@ -2695,15 +2771,14 @@ if (svTriangle) {
       return;
     }
 
-    if (currentTool === 'cropImage') {
-      // Crop works only when overlay exists
-      if (!overlayObj) return;
-      isCropping = true;
-      cropStart = { ...pt };
-      cropRect = { x: pt.x, y: pt.y, w: 0, h: 0 };
-      showCropOverlay(pt.x, pt.y, 0, 0);
-      isPointerDown = true;
-      return;
+  if (currentTool === 'cropImage') {
+  // Canvas crop (no overlay needed)
+    isCropping = true;
+    cropStart = { ...pt };
+    cropRect = { x: pt.x, y: pt.y, w: 0, h: 0 };
+    showCropOverlay(pt.x, pt.y, 0, 0);
+    isPointerDown = true;
+    return;
     }
   }
 
@@ -2801,12 +2876,11 @@ if (svTriangle) {
       finalizeLassoSelection();
       return;
     }
-
     if (currentTool === 'cropImage' && isCropping) {
       isCropping = false;
       hideCropOverlay();
-      if (cropRect && cropRect.w >= 1 && cropRect.h >= 1) {
-        cropOverlayToRect(cropRect);
+      if (cropRect && cropRect.w >= 2 && cropRect.h >= 2) {
+        cropCanvasToRect(cropRect);
       }
       cropRect = null;
       return;
