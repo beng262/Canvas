@@ -2260,6 +2260,7 @@ function cropCanvasToRect(rect) {
 
   redrawAll();
 }
+  
   function cropOverlayToRect(rect) {
     if (!overlayObj || !rect) return;
 
