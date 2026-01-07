@@ -133,49 +133,37 @@ document.addEventListener('DOMContentLoaded', () => {
     applyTheme(next);
   });
   initTheme();
-
-  // ===== Create input overlay =====
-  const inputOverlay = document.createElement('canvas');
+  // ===== Input overlay =====
+  const inputOverlay = $('inputOverlay') || document.createElement('canvas');
+  const inputOverlayNeedsAppend = !inputOverlay.parentElement;
   inputOverlay.id = 'inputOverlay';
   inputOverlay.width = canvasW;
   inputOverlay.height = canvasH;
   inputOverlay.style.position = 'absolute';
   inputOverlay.style.left = '0';
   inputOverlay.style.top = '0';
-  inputOverlay.style.zIndex = '10';
+  inputOverlay.style.zIndex = inputOverlay.style.zIndex || '50';
   inputOverlay.style.pointerEvents = 'auto';
   inputOverlay.style.touchAction = 'none';
   inputOverlay.style.background = 'rgba(0,0,0,0)';
-  canvasContainer.appendChild(inputOverlay);
+  if (inputOverlayNeedsAppend) {
+    canvasContainer.appendChild(inputOverlay);
+  }
   const ctxInputOverlay = inputOverlay.getContext('2d');
 
   // ===== Symmetry guide overlay =====
-  const symmetryGuide = document.createElement('canvas');
+  const symmetryGuide = $('symmetryGuide') || document.createElement('div');
+  const symmetryGuideNeedsAppend = !symmetryGuide.parentElement;
   symmetryGuide.id = 'symmetryGuide';
-  symmetryGuide.width = canvasW;
-  symmetryGuide.height = canvasH;
-  symmetryGuide.style.position = 'absolute';
-  symmetryGuide.style.left = '0';
-  symmetryGuide.style.top = '0';
-  symmetryGuide.style.zIndex = '9';
-  symmetryGuide.style.pointerEvents = 'none';
-  symmetryGuide.style.background = 'rgba(0,0,0,0)';
-  canvasContainer.appendChild(symmetryGuide);
-  const ctxSym = symmetryGuide.getContext('2d');
+  symmetryGuide.classList.add('symmetry-guide');
+  if (symmetryGuideNeedsAppend) {
+    canvasContainer.appendChild(symmetryGuide);
+  }
 
   function renderSymmetryGuide() {
-    ctxSym.clearRect(0, 0, canvasW, canvasH);
-    if (!symmetryCheckbox || !symmetryCheckbox.checked) return;
-    ctxSym.save();
-    ctxSym.globalAlpha = 0.55;
-    ctxSym.strokeStyle = '#3b82f6';
-    ctxSym.lineWidth = 2;
-    ctxSym.setLineDash([8, 6]);
-    ctxSym.beginPath();
-    ctxSym.moveTo(canvasW / 2, 0);
-    ctxSym.lineTo(canvasW / 2, canvasH);
-    ctxSym.stroke();
-    ctxSym.restore();
+    if (!symmetryGuide) return;
+    const shouldShow = symmetryCheckbox && symmetryCheckbox.checked;
+    symmetryGuide.style.display = shouldShow ? 'block' : 'none';
   }
 
   // ===== Ensure lasso overlay matches size =====
@@ -185,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
     lassoOverlay.style.position = 'absolute';
     lassoOverlay.style.left = '0';
     lassoOverlay.style.top = '0';
-    lassoOverlay.style.zIndex = '8';
+    lassoOverlay.style.zIndex = lassoOverlay.style.zIndex || '60';
     lassoOverlay.style.pointerEvents = 'none';
   }
   const ctxLasso = lassoOverlay ? lassoOverlay.getContext('2d') : null;
