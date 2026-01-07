@@ -2260,6 +2260,8 @@ function cropCanvasToRect(rect) {
 
   redrawAll();
 }
+  function cropOverlayToRect(rect) {
+    if (!overlayObj || !rect) return;
 
     // Intersect crop rect with overlay bounds (canvas coords)
     const ox1 = overlayObj.x;
