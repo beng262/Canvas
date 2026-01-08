@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
   canvasContainer.style.height = `${displayCanvas.height}px`;
 
 
+
   // ===== UI =====
   const brushSizeInput = $('brushSize');
   const brushSizeValue = $('brushSizeValue');
@@ -29,6 +30,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const opacityValue = $('opacityValue');
   const brushColorInput = $('brushColor');
   const recentColorsDiv = $('recentColors');
+  const brushSpacingInput = $('brushSpacing');
+  const brushSpacingValue = $('brushSpacingValue');
+  const gridToggle = $('gridToggle');
+  const gridSpacingInput = $('gridSpacing');
+  const gridSpacingValue = $('gridSpacingValue');
 
   const toolSelect = $('tool');
   const brushTypeSelect = $('brushType');
@@ -133,6 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     applyTheme(next);
   });
   initTheme();
+
   // ===== Input overlay =====
   const inputOverlay = $('inputOverlay') || document.createElement('canvas');
   const inputOverlayNeedsAppend = !inputOverlay.parentElement;
@@ -164,6 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!symmetryGuide) return;
     const shouldShow = symmetryCheckbox && symmetryCheckbox.checked;
     symmetryGuide.style.display = shouldShow ? 'block' : 'none';
+    symmetryGuide.style.height = `${canvasH}px`;
   }
 
   // ===== Ensure lasso overlay matches size =====
@@ -303,11 +311,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   on(brushColorInput, 'change', () => addRecentColor(brushColorInput.value));
 
+  function updateCanvasClasses() {
+    if (!canvasContainer) return;
+    const pattern = backgroundPatternSelect ? backgroundPatternSelect.value : 'plain';
+    const useGrid = gridToggle && gridToggle.checked;
+    canvasContainer.className = `canvas-container ${pattern}${useGrid ? ' grid' : ''}`;
+  }
+
   // ===== Background selector =====
-  on(backgroundPatternSelect, 'change', () => {
-    const pattern = backgroundPatternSelect.value;
-    canvasContainer.className = `canvas-container ${pattern}`;
-  });
+  on(backgroundPatternSelect, 'change', updateCanvasClasses);
 
   // ===== Ensure shape options show/hide =====
   function syncShapeOptions() {
@@ -315,104 +327,21 @@ document.addEventListener('DOMContentLoaded', () => {
     shapeOptionsDiv.style.display = currentTool === 'shape' ? 'inline-block' : 'none';
   }
 
-// ===== Build layers panel (single instance, NOT duplicated) =====
-function getOrCreateLayersPanel() {
-  // If script reruns / hot reload: reuse existing panel instead of creating another
-  let panel = document.getElementById('layersPanel');
-  if (panel) return panel;
-
-  panel = document.createElement('div');
-  panel.id = 'layersPanel';
-
-  // Prefer hosting OUTSIDE the canvas if a host exists
-  const layersHost = document.getElementById('layersPanelHost');
-  if (layersHost) {
-    // Put it in the host (sidebar area)
-    layersHost.appendChild(panel);
-    panel.style.position = 'relative';
-    panel.style.right = 'auto';
-    panel.style.top = 'auto';
-    panel.style.margin = '8px';
-  } else {
-    // Fallback: overlay inside canvas container (but at least single instance)
-    (canvasContainer || document.body).appendChild(panel);
-    panel.style.position = 'absolute';
-    panel.style.right = '8px';
-    panel.style.top = '8px';
+// ===== Layers panel (use existing markup) =====
+const layersPanel = document.getElementById('layersPanel');
+let layerList = document.getElementById('layersList');
+if (!layerList) {
+  layerList = document.createElement('div');
+  layerList.id = 'layersList';
+  layerList.className = 'layers-list';
+  if (layersPanel) {
+    layersPanel.appendChild(layerList);
   }
-
-  panel.style.zIndex = '20';
-  panel.style.width = '190px';
-  panel.style.maxHeight = 'calc(100% - 16px)';
-  panel.style.overflow = 'hidden';
-  panel.style.borderRadius = '10px';
-  panel.style.boxShadow = '0 6px 18px rgba(0,0,0,0.18)';
-  panel.style.background = document.body.classList.contains('dark')
-    ? 'rgba(17,24,39,0.92)'
-    : 'rgba(255,255,255,0.92)';
-  panel.style.backdropFilter = 'blur(6px)';
-  panel.style.padding = '8px';
-  panel.style.display = 'flex';
-  panel.style.flexDirection = 'column';
-  panel.style.gap = '8px';
-  panel.style.pointerEvents = 'auto';
-
-  return panel;
 }
 
-const layersPanel = getOrCreateLayersPanel();
-
-// Clear panel content if script reruns (prevents duplicate header/buttons inside same panel)
-layersPanel.innerHTML = '';
-
-
-  const layersHeader = document.createElement('div');
-  layersHeader.style.display = 'flex';
-  layersHeader.style.alignItems = 'center';
-  layersHeader.style.justifyContent = 'space-between';
-  layersHeader.style.gap = '6px';
-
-  const layersTitle = document.createElement('div');
-  layersTitle.textContent = 'Layers';
-  layersTitle.style.fontWeight = '700';
-  layersTitle.style.fontSize = '14px';
-  layersTitle.style.color = document.body.classList.contains('dark') ? '#e5e7eb' : '#111827';
-
-  const layersButtons = document.createElement('div');
-  layersButtons.style.display = 'flex';
-  layersButtons.style.gap = '6px';
-
-  function makeIconBtn(svgPathD, title) {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.title = title;
-    b.style.width = '30px';
-    b.style.height = '30px';
-    b.style.display = 'inline-flex';
-    b.style.alignItems = 'center';
-    b.style.justifyContent = 'center';
-    b.style.padding = '0';
-    b.style.borderRadius = '8px';
-    b.style.border = 'none';
-    b.style.cursor = 'pointer';
-    b.style.background = document.body.classList.contains('dark') ? '#111827' : '#FFB2F7';
-    b.style.color = '#fff';
-    b.onmouseenter = () => (b.style.filter = 'brightness(0.95)');
-    b.onmouseleave = () => (b.style.filter = 'none');
-
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('viewBox', '0 0 24 24');
-    svg.setAttribute('width', '18');
-    svg.setAttribute('height', '18');
-    svg.style.display = 'block';
-    svg.style.fill = 'currentColor';
-
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', svgPathD);
-    svg.appendChild(path);
-    b.appendChild(svg);
-    return b;
-  }
+const btnAddLayer = document.getElementById('addLayerBtn');
+const btnDeleteLayer = document.getElementById('deleteLayerBtn');
+const btnMergeDown = document.getElementById('mergeLayerBtn');
 
   const iconPlus = 'M11 5h2v14h-2zM5 11h14v2H5z';
   const iconTrash = 'M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z';
@@ -438,36 +367,6 @@ layersPanel.innerHTML = '';
   layerList.style.paddingRight = '2px';
   layerList.style.maxHeight = '260px';
 
-  // Brush spacing UI (compact)
-  const spacingRow = document.createElement('div');
-  spacingRow.style.display = 'grid';
-  spacingRow.style.gridTemplateColumns = '1fr 70px';
-  spacingRow.style.alignItems = 'center';
-  spacingRow.style.gap = '8px';
-
-  const spacingLabel = document.createElement('div');
-  spacingLabel.textContent = 'Spacing';
-  spacingLabel.style.fontSize = '12px';
-  spacingLabel.style.fontWeight = '700';
-  spacingLabel.style.color = document.body.classList.contains('dark') ? '#e5e7eb' : '#111827';
-
-  const spacingInput = document.createElement('input');
-  spacingInput.type = 'range';
-  spacingInput.min = '0';
-  spacingInput.max = '60';
-  spacingInput.value = '0';
-  spacingInput.title = 'Brush spacing';
-
-  spacingRow.appendChild(spacingLabel);
-  spacingRow.appendChild(spacingInput);
-
-  layersPanel.appendChild(layersHeader);
-  layersPanel.appendChild(layerList);
-  layersPanel.appendChild(spacingRow);
-
-  on(spacingInput, 'input', () => {
-    brushSpacingPx = parseInt(spacingInput.value, 10) || 0;
-  });
 
 // ===== Color wheels (two separate wheel options, working) =====
 const wheelPanel = document.getElementById("wheelPanel");
@@ -1493,13 +1392,36 @@ if (svTriangle) {
   on(brushTypeSelect, 'change', () => {
     currentBrush = brushTypeSelect.value;
   });
+  if (brushSpacingInput) {
+    brushSpacingPx = parseInt(brushSpacingInput.value, 10) || 0;
+  }
+  if (brushSpacingValue && brushSpacingInput) {
+    brushSpacingValue.textContent = brushSpacingInput.value;
+  }
+  on(brushSpacingInput, 'input', () => {
+    brushSpacingPx = parseInt(brushSpacingInput.value, 10) || 0;
+    if (brushSpacingValue) brushSpacingValue.textContent = brushSpacingInput.value;
+  });
+
+  if (gridSpacingInput) {
+    canvasContainer.style.setProperty('--gridSize', `${gridSpacingInput.value}px`);
+  }
+  if (gridSpacingValue && gridSpacingInput) {
+    gridSpacingValue.textContent = gridSpacingInput.value;
+  }
+  on(gridToggle, 'change', updateCanvasClasses);
+  on(gridSpacingInput, 'input', () => {
+    if (!gridSpacingInput) return;
+    canvasContainer.style.setProperty('--gridSize', `${gridSpacingInput.value}px`);
+    if (gridSpacingValue) gridSpacingValue.textContent = gridSpacingInput.value;
+  });
 
   // ===== Tool change =====
   on(toolSelect, 'change', () => {
     const nextTool = toolSelect.value;
 
     // Commit overlay if leaving transform to non-crop tool
-    if (currentTool === 'transform' && nextTool !== 'transform' && nextTool !== 'cropImage') {
+    if (currentTool === 'transform' && nextTool !== 'transform' && nextTool !== 'crop') {
       commitOverlay();
     }
 
@@ -2249,6 +2171,7 @@ function cropCanvasToRect(rect) {
   redrawAll();
 }
   
+
   function cropOverlayToRect(rect) {
     if (!overlayObj || !rect) return;
 
@@ -2685,9 +2608,9 @@ function cropCanvasToRect(rect) {
 
   // ===== Pointer input (ALL tools work here) =====
   function beginTool(pt) {
-    if (overlayObj && currentTool !== 'transform' && currentTool !== 'cropImage') {
+    if (overlayObj && currentTool !== 'transform' && currentTool !== 'crop') {      
       // Keep overlay unless explicitly committed by changing tools; safe to still draw underneath by committing
-      // We choose to commit for sanity when starting a new action in other tools.
+      // Choose to commit for sanity when starting a new action in other tools.
       commitOverlay();
     }
 
