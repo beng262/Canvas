@@ -2688,7 +2688,7 @@ function cropCanvasToRect(rect) {
       return;
     }
 
-  if (currentTool === 'cropImage') {
+  if (currentTool === 'crop') {
   // Canvas crop (no overlay needed)
     isCropping = true;
     cropStart = { ...pt };
@@ -2751,7 +2751,7 @@ function cropCanvasToRect(rect) {
       return;
     }
 
-    if (currentTool === 'cropImage' && isCropping && cropRect) {
+    if (currentTool === 'crop' && isCropping && cropRect) {
       const x1 = Math.min(cropStart.x, pt.x);
       const y1 = Math.min(cropStart.y, pt.y);
       const w = Math.abs(pt.x - cropStart.x);
@@ -2793,7 +2793,7 @@ function cropCanvasToRect(rect) {
       finalizeLassoSelection();
       return;
     }
-    if (currentTool === 'cropImage' && isCropping) {
+    if (currentTool === 'crop' && isCropping) {
       isCropping = false;
       hideCropOverlay();
       if (cropRect && cropRect.w >= 2 && cropRect.h >= 2) {
@@ -2862,6 +2862,7 @@ function cropCanvasToRect(rect) {
   rebuildLayerList();
   syncShapeOptions();
   normalizeBrushOptions();
+  updateCanvasClasses();
   redrawAll();
   renderSymmetryGuide();
 });
