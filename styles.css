@@ -90,55 +90,81 @@ header h1 { margin: 0; color: #ffffff; font-size: 2.6em; }
   height: 600px;
   border: 2px dashed rgba(0,0,0,0.25);
   border-radius: 14px;
-  background-size: cover;
-  background-position: center;
+ /* Canvas */
+.canvas-wrap { display: flex; justify-content: center; }
+.canvas-container {
+  position: relative;
+  width: 800px;
+  height: 600px;
+  border: 2px dashed rgba(0,0,0,0.25);
+  border-radius: 14px;
+  --canvas-bg-color: #ffffff;
+  --canvas-bg-image: none;
+  --canvas-bg-size: cover;
+  --canvas-bg-position: center;
+  background-color: var(--canvas-bg-color);
+  background-image: var(--canvas-bg-image);
+  background-size: var(--canvas-bg-size);
+  background-position: var(--canvas-bg-position);
   overflow: visible;
   touch-action: none;
 }
 
 /* Backgrounds */
-.canvas-container.plain { background-color: #ffffff; }
-.canvas-container.dark { background-color: #000000; }
-.canvas-container.notebook { background: repeating-linear-gradient(0deg, #fff, #fff 23px, #d1d1d1 24px); }
-.canvas-container.fabric { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/fabric%20copy.png'); }
-.canvas-container.paper  { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/10366807.jpg'); }
-.canvas-container.wood   { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/wood.jpg'); }
-.canvas-container.marble { background-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/marble%20copy.png'); }
+.canvas-container.plain { --canvas-bg-color: #ffffff; --canvas-bg-image: none; }
+.canvas-container.dark { --canvas-bg-color: #000000; --canvas-bg-image: none; }
+.canvas-container.notebook {
+  --canvas-bg-color: #ffffff;
+  --canvas-bg-image: repeating-linear-gradient(0deg, #fff, #fff 23px, #d1d1d1 24px);
+  --canvas-bg-size: auto;
+  --canvas-bg-position: 0 0;
+}
+.canvas-container.fabric { --canvas-bg-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/fabric%20copy.png'); }
+.canvas-container.paper  { --canvas-bg-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/10366807.jpg'); }
+.canvas-container.wood   { --canvas-bg-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/wood.jpg'); }
+.canvas-container.marble { --canvas-bg-image: url('https://uploads.onecompiler.io/438dg3d7r/43efd2752/marble%20copy.png'); }
 
 .canvas-container.grid {
   --gridSize: 24px;
   --gridLine: rgba(17,24,39,0.16);
-  background-color: #ffffff;
+  background-color: var(--canvas-bg-color);
   background-image:
     linear-gradient(to right, var(--gridLine) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--gridLine) 1px, transparent 1px);
-  background-size: var(--gridSize) var(--gridSize);
+    linear-gradient(to bottom, var(--gridLine) 1px, transparent 1px),
+    var(--canvas-bg-image);
+  background-size:
+    var(--gridSize) var(--gridSize),
+    var(--gridSize) var(--gridSize),
+    var(--canvas-bg-size);
+  background-position:
+    0 0,
+    0 0,
+    var(--canvas-bg-position);
 }
 body.dark .canvas-container.grid {
   --gridLine: rgba(229,231,235,0.16);
-  background-color: #111827;
 }
 
 /* Transparent checker */
 .canvas-container.transLight {
-  background-color: #fff;
-  background-image:
+  --canvas-bg-color: #fff;
+  --canvas-bg-image:
     linear-gradient(45deg, rgba(0,0,0,0.06) 25%, transparent 25%),
     linear-gradient(-45deg, rgba(0,0,0,0.06) 25%, transparent 25%),
     linear-gradient(45deg, transparent 75%, rgba(0,0,0,0.06) 75%),
     linear-gradient(-45deg, transparent 75%, rgba(0,0,0,0.06) 75%);
-  background-size: 26px 26px;
-  background-position: 0 0, 0 13px, 13px -13px, -13px 0;
+  --canvas-bg-size: 26px 26px;
+  --canvas-bg-position: 0 0, 0 13px, 13px -13px, -13px 0;
 }
 .canvas-container.transDark {
-  background-color: #111827;
-  background-image:
+  --canvas-bg-color: #111827;
+  --canvas-bg-image:
     linear-gradient(45deg, rgba(255,255,255,0.08) 25%, transparent 25%),
     linear-gradient(-45deg, rgba(255,255,255,0.08) 25%, transparent 25%),
     linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.08) 75%),
     linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.08) 75%);
-  background-size: 26px 26px;
-  background-position: 0 0, 0 13px, 13px -13px, -13px 0;
+  --canvas-bg-size: 26px 26px;
+  --canvas-bg-position: 0 0, 0 13px, 13px -13px, -13px 0;
 }
 
 /* Overlays */
