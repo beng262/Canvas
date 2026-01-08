@@ -106,7 +106,7 @@
         <option value="heart">Heart</option>
       </select>
     </div>
-
+    
     <!-- Background -->
     <div class="toolbar-item">
       <label for="backgroundPattern">BG</label>
@@ -116,18 +116,11 @@
         <option value="notebook">Notebook</option>
         <option value="fabric">Fabric</option>
         <option value="paper">Paper</option>
-        <option value="grid">Grid</option>
         <option value="wood">Wood</option>
         <option value="marble">Marble</option>
         <option value="transLight">Transparent Light</option>
         <option value="transDark">Transparent Dark</option>
       </select>
-    </div>
-
-    <div class="toolbar-item">
-      <label for="gridSpacing">Grid</label>
-      <input type="range" id="gridSpacing" min="8" max="80" value="24" />
-      <span id="gridSpacingValue">24</span>
     </div>
 
     <!-- Icon actions -->
@@ -183,6 +176,16 @@
       <input type="file" id="addImageInput" accept="image/*" style="display:none;" />
 
       <button id="darkModeToggle" aria-pressed="false" title="Switch to dark mode">☀️</button>
+    </div>
+
+    <!-- Grid -->
+    <div class="toolbar-item">
+      <label class="check-row">
+        <input type="checkbox" id="gridToggle" />
+        Grid
+      </label>
+      <input type="range" id="gridSpacing" min="8" max="80" value="24" />
+      <span id="gridSpacingValue">24</span>
     </div>
 
     <!-- Symmetry -->
