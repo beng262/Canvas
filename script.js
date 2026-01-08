@@ -343,30 +343,6 @@ const btnAddLayer = document.getElementById('addLayerBtn');
 const btnDeleteLayer = document.getElementById('deleteLayerBtn');
 const btnMergeDown = document.getElementById('mergeLayerBtn');
 
-  const iconPlus = 'M11 5h2v14h-2zM5 11h14v2H5z';
-  const iconTrash = 'M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z';
-  const iconMerge = 'M7 3h2v6h6V3h2v8H9v10H7V3z';
-
-  const btnAddLayer = makeIconBtn(iconPlus, 'Add layer');
-  const btnDeleteLayer = makeIconBtn(iconTrash, 'Delete layer');
-  const btnMergeDown = makeIconBtn(iconMerge, 'Merge down');
-
-  layersButtons.appendChild(btnAddLayer);
-  layersButtons.appendChild(btnDeleteLayer);
-  layersButtons.appendChild(btnMergeDown);
-
-  layersHeader.appendChild(layersTitle);
-  layersHeader.appendChild(layersButtons);
-
-  const layerList = document.createElement('div');
-  layerList.id = 'layerList';
-  layerList.style.display = 'flex';
-  layerList.style.flexDirection = 'column';
-  layerList.style.gap = '6px';
-  layerList.style.overflowY = 'auto';
-  layerList.style.paddingRight = '2px';
-  layerList.style.maxHeight = '260px';
-
 
 // ===== Color wheels (two separate wheel options, working) =====
 const wheelPanel = document.getElementById("wheelPanel");
