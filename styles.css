@@ -90,14 +90,6 @@ header h1 { margin: 0; color: #ffffff; font-size: 2.6em; }
   height: 600px;
   border: 2px dashed rgba(0,0,0,0.25);
   border-radius: 14px;
- /* Canvas */
-.canvas-wrap { display: flex; justify-content: center; }
-.canvas-container {
-  position: relative;
-  width: 800px;
-  height: 600px;
-  border: 2px dashed rgba(0,0,0,0.25);
-  border-radius: 14px;
   --canvas-bg-color: #ffffff;
   --canvas-bg-image: none;
   --canvas-bg-size: cover;
