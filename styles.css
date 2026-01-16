@@ -118,7 +118,7 @@ header h1 { margin: 0; color: #ffffff; font-size: 2.6em; }
 
 .canvas-container.grid {
   --gridSize: 24px;
-  --gridLine: rgba(17,24,39,0.16);
+  --gridLine: rgba(255, 0, 0, 0.5); 
   background-color: var(--canvas-bg-color);
   background-image:
     linear-gradient(to right, var(--gridLine) 1px, transparent 1px),
