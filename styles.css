@@ -164,8 +164,8 @@ body.dark .canvas-container.grid {
   position: absolute;
   left: 0;
   top: 0;
-  width: 800px;
-  height: 600px;
+  width: 100%;
+  height: 100%;
 }
 #drawingCanvas { z-index: 10; }
 #inputOverlay { z-index: 50; }
