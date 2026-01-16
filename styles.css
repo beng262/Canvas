@@ -118,7 +118,7 @@ header h1 { margin: 0; color: #ffffff; font-size: 2.6em; }
 
 .canvas-container.grid {
   --gridSize: 24px;
-  --gridLine: rgba(255, 0, 0, 0.5); /* 50% transparent red */
+  --gridLine: rgba(255, 0, 0, 0.7); 
   background-color: var(--canvas-bg-color);
   background-image:
     linear-gradient(to right, var(--gridLine) 1px, transparent 1px),
@@ -135,7 +135,7 @@ header h1 { margin: 0; color: #ffffff; font-size: 2.6em; }
 }
 
 body.dark .canvas-container.grid {
-  --gridLine: rgba(255, 0, 0, 0.5);
+  --gridLine: rgba(255, 0, 0, 0.7);
 }
 
 /* Transparent checker */
