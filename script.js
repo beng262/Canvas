@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
   canvasContainer.style.position = canvasContainer.style.position || 'relative';
   canvasContainer.style.width = `${displayCanvas.width}px`;
   canvasContainer.style.height = `${displayCanvas.height}px`;
+  canvasContainer.style.transformOrigin = 'top left';
 
 
 
@@ -69,7 +70,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let canvasW = displayCanvas.width;
   let canvasH = displayCanvas.height;
-
+  const canvasWrap = canvasContainer.closest('.canvas-wrap');
+  
   const MAX_HISTORY = 30;
   const MAX_LAYERS = 10;
 
@@ -171,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!symmetryGuide) return;
     const shouldShow = symmetryCheckbox && symmetryCheckbox.checked;
     symmetryGuide.style.display = shouldShow ? 'block' : 'none';
-    symmetryGuide.style.height = `${canvasH}px`;
+    symmetryGuide.style.height = `${canvasContainer.clientHeight}px`;
   }
 
   // ===== Ensure lasso overlay matches size =====
@@ -213,15 +215,18 @@ document.addEventListener('DOMContentLoaded', () => {
     ctxLasso.restore();
   }
 
-  // ===== Selection overlay helpers =====
+ // ===== Selection overlay helpers =====
   function showSelectionOverlay(x, y, w, h) {
     if (!selectionOverlayDiv) return;
+    const r = inputOverlay.getBoundingClientRect();
+    const sx = r.width ? r.width / canvasW : 1;
+    const sy = r.height ? r.height / canvasH : 1;
     selectionOverlayDiv.style.display = 'block';
     Object.assign(selectionOverlayDiv.style, {
-      left: `${x}px`,
-      top: `${y}px`,
-      width: `${w}px`,
-      height: `${h}px`,
+      left: `${x * sx}px`,
+      top: `${y * sy}px`,
+      width: `${w * sx}px`,
+      height: `${h * sy}px`,
     });
   }
   function hideSelectionOverlay() {
@@ -232,14 +237,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // ===== Crop overlay helpers =====
   function showCropOverlay(x, y, w, h) {
     if (!cropOverlayDiv) return;
+    const r = inputOverlay.getBoundingClientRect();
+    const sx = r.width ? r.width / canvasW : 1;
+    const sy = r.height ? r.height / canvasH : 1;
     cropOverlayDiv.style.display = 'block';
     Object.assign(cropOverlayDiv.style, {
-      left: `${x}px`,
-      top: `${y}px`,
-      width: `${w}px`,
-      height: `${h}px`,
+      left: `${x * sx}px`,
+      top: `${y * sy}px`,
+      width: `${w * sx}px`,
+      height: `${h * sy}px`,
     });
   }
+
   function hideCropOverlay() {
     if (!cropOverlayDiv) return;
     cropOverlayDiv.style.display = 'none';
@@ -256,12 +265,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   function canvasPointFromEvent(evt) {
     const r = inputOverlay.getBoundingClientRect();
+    const sx = r.width ? canvasW / r.width : 1;
+    const sy = r.height ? canvasH / r.height : 1;
     // Clamp to last valid pixel to avoid out-of-bounds indices (esp. for flood fill)
     return {
-      x: clamp(evt.clientX - r.left, 0, Math.max(0, canvasW - 1)),
-      y: clamp(evt.clientY - r.top, 0, Math.max(0, canvasH - 1)),
+      x: clamp((evt.clientX - r.left) * sx, 0, Math.max(0, canvasW - 1)),
+      y: clamp((evt.clientY - r.top) * sy, 0, Math.max(0, canvasH - 1)),
     };
   }
+
 
 
   // ===== Color utils =====
@@ -1225,18 +1237,28 @@ if (svTriangle) {
     drawOverlayToDisplay();
     renderSymmetryGuide();
   }
+  function applyCanvasDisplaySize() {
+    const wrapRect = canvasWrap ? canvasWrap.getBoundingClientRect() : null;
+    const maxWidth = wrapRect ? wrapRect.width : window.innerWidth;
+    const top = wrapRect ? wrapRect.top : 0;
+    const maxHeight = Math.max(200, window.innerHeight - top - 24);
+    const scale = Math.min(1, maxWidth / canvasW, maxHeight / canvasH);
+    const displayW = Math.max(1, Math.floor(canvasW * scale));
+    const displayH = Math.max(1, Math.floor(canvasH * scale));
+    canvasContainer.style.width = `${displayW}px`;
+    canvasContainer.style.height = `${displayH}px`;
+    renderSymmetryGuide();
+    updateTransformBox();
+  }
+
+  on(window, 'resize', () => applyCanvasDisplaySize());
 
   // ===== Resize everything =====
   function resizeAll(w, h, silent = false) {
     if (!silent) saveState();
 
-    displayCanvas.width = w;
-    displayCanvas.height = h;
-
-
-    canvasContainer.style.width = `${w}px`;
-    canvasContainer.style.height = `${h}px`;
-
+    canvasW = w;
+    canvasH = h;
 
     displayCanvas.width = w;
     displayCanvas.height = h;
@@ -1252,8 +1274,8 @@ if (svTriangle) {
       lassoOverlay.height = h;
     }
 
-    canvasContainer.style.width = `${w}px`;
-    canvasContainer.style.height = `${h}px`;
+    applyCanvasDisplaySize();
+
 
     // Scale existing layers into new size
     const oldLayers = layers.map((L) => {
@@ -2839,6 +2861,7 @@ function cropCanvasToRect(rect) {
   syncShapeOptions();
   normalizeBrushOptions();
   updateCanvasClasses();
+  applyCanvasDisplaySize();
   redrawAll();
   renderSymmetryGuide();
 });
