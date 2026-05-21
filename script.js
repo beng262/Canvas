@@ -37,6 +37,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const gridSpacingInput = $('gridSpacing');
   const gridSpacingValue = $('gridSpacingValue');
 
+  // Zoom controls
+  const zoomInBtn = $('zoomIn');
+  const zoomOutBtn = $('zoomOut');
+  const zoomResetBtn = $('zoomReset');
+  const zoomLevelSpan = $('zoomLevel');
+
+  // Color input fields
+  const colorHueInput = $('colorHue');
+  const colorSatInput = $('colorSat');
+  const colorValInput = $('colorVal');
+  const colorRInput = $('colorR');
+  const colorGInput = $('colorG');
+  const colorBInput = $('colorB');
+  const colorHexInput = $('colorHexInput');
+
   const toolSelect = $('tool');
   const brushTypeSelect = $('brushType');
   const backgroundPatternSelect = $('backgroundPattern');
@@ -67,6 +82,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // ===== Defaults / State =====
   let currentTool = toolSelect ? toolSelect.value : 'pen';
   let currentBrush = brushTypeSelect ? brushTypeSelect.value : 'round';
+
+  // Zoom state
+  let canvasZoom = 1;
+  const ZOOM_MIN = 0.1;
+  const ZOOM_MAX = 10;
+  const ZOOM_STEP = 0.25;
 
   let canvasW = displayCanvas.width;
   let canvasH = displayCanvas.height;
@@ -354,6 +375,9 @@ if (!layerList) {
 const btnAddLayer = document.getElementById('addLayerBtn');
 const btnDeleteLayer = document.getElementById('deleteLayerBtn');
 const btnMergeDown = document.getElementById('mergeLayerBtn');
+const btnMoveLayerUp = document.getElementById('moveLayerUpBtn');
+const btnMoveLayerDown = document.getElementById('moveLayerDownBtn');
+const btnClipLayer = document.getElementById('clipLayerBtn');
 
 
 // ===== Color wheels (two separate wheel options, working) =====
@@ -854,6 +878,124 @@ if (svTriangle) {
   });
 }
 
+// ===== Color Input Fields =====
+function updateColorInputs(hex) {
+  const rgb = hexToRgb(hex);
+  const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+  
+  if (colorHueInput) colorHueInput.value = Math.round(hsv.h);
+  if (colorSatInput) colorSatInput.value = Math.round(hsv.s * 100);
+  if (colorValInput) colorValInput.value = Math.round(hsv.v * 100);
+  if (colorRInput) colorRInput.value = rgb.r;
+  if (colorGInput) colorGInput.value = rgb.g;
+  if (colorBInput) colorBInput.value = rgb.b;
+  if (colorHexInput) colorHexInput.value = hex.toUpperCase();
+}
+
+function setPreviewWithInputs(hex) {
+  setPreview(hex);
+  updateColorInputs(hex);
+}
+
+// Update inputs when preview changes
+const originalSetPreview = setPreview;
+setPreview = function(hex) {
+  originalSetPreview(hex);
+  updateColorInputs(hex);
+};
+
+// HSV input handlers
+if (colorHueInput) {
+  colorHueInput.addEventListener("input", () => {
+    const h = clamp(parseInt(colorHueInput.value, 10) || 0, 0, 360);
+    const s = clamp(parseInt(colorSatInput?.value, 10) || 0, 0, 100) / 100;
+    const v = clamp(parseInt(colorValInput?.value, 10) || 100, 0, 100) / 100;
+    const rgb = hsvToRgb(h, s, v);
+    const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+    setPreview(hex);
+    circularHSV = { h, s, v };
+    triHue = h;
+    triSV = { s, v };
+    drawCircularWheel();
+    drawHueRing();
+    drawSvTriangle();
+  });
+}
+
+if (colorSatInput) {
+  colorSatInput.addEventListener("input", () => {
+    const h = clamp(parseInt(colorHueInput?.value, 10) || 0, 0, 360);
+    const s = clamp(parseInt(colorSatInput.value, 10) || 0, 0, 100) / 100;
+    const v = clamp(parseInt(colorValInput?.value, 10) || 100, 0, 100) / 100;
+    const rgb = hsvToRgb(h, s, v);
+    const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+    setPreview(hex);
+    circularHSV = { h, s, v };
+    triSV = { s, v };
+    drawCircularWheel();
+    drawSvTriangle();
+  });
+}
+
+if (colorValInput) {
+  colorValInput.addEventListener("input", () => {
+    const h = clamp(parseInt(colorHueInput?.value, 10) || 0, 0, 360);
+    const s = clamp(parseInt(colorSatInput?.value, 10) || 0, 0, 100) / 100;
+    const v = clamp(parseInt(colorValInput.value, 10) || 100, 0, 100) / 100;
+    const rgb = hsvToRgb(h, s, v);
+    const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+    setPreview(hex);
+    circularHSV.v = v;
+    triSV.v = v;
+    if (valueSlider) valueSlider.value = String(Math.round(v * 100));
+    drawCircularWheel();
+    drawSvTriangle();
+  });
+}
+
+// RGB input handlers
+function handleRgbInput() {
+  const r = clamp(parseInt(colorRInput?.value, 10) || 0, 0, 255);
+  const g = clamp(parseInt(colorGInput?.value, 10) || 0, 0, 255);
+  const b = clamp(parseInt(colorBInput?.value, 10) || 0, 0, 255);
+  const hex = rgbToHex(r, g, b);
+  const hsv = rgbToHsv(r, g, b);
+  
+  setPreview(hex);
+  circularHSV = { h: hsv.h, s: hsv.s, v: hsv.v };
+  triHue = hsv.h;
+  triSV = { s: hsv.s, v: hsv.v };
+  if (valueSlider) valueSlider.value = String(Math.round(hsv.v * 100));
+  drawCircularWheel();
+  drawHueRing();
+  drawSvTriangle();
+}
+
+if (colorRInput) colorRInput.addEventListener("input", handleRgbInput);
+if (colorGInput) colorGInput.addEventListener("input", handleRgbInput);
+if (colorBInput) colorBInput.addEventListener("input", handleRgbInput);
+
+// Hex input handler
+if (colorHexInput) {
+  colorHexInput.addEventListener("input", () => {
+    let hex = colorHexInput.value.trim();
+    if (!hex.startsWith('#')) hex = '#' + hex;
+    if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
+    
+    const rgb = hexToRgb(hex);
+    const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+    
+    setPreview(hex);
+    circularHSV = { h: hsv.h, s: hsv.s, v: hsv.v };
+    triHue = hsv.h;
+    triSV = { s: hsv.s, v: hsv.v };
+    if (valueSlider) valueSlider.value = String(Math.round(hsv.v * 100));
+    drawCircularWheel();
+    drawHueRing();
+    drawSvTriangle();
+  });
+}
+
 
   // ===== Canvas sizing + New canvas modal (presets + custom) =====
   const newCanvasBtn = document.createElement('button');
@@ -1027,7 +1169,7 @@ if (svTriangle) {
     c.height = canvasH;
     const cx = c.getContext('2d');
     cx.clearRect(0, 0, canvasW, canvasH);
-    return { name, canvas: c, ctx: cx, visible: true };
+    return { name, canvas: c, ctx: cx, visible: true, clipped: false };
   }
 
   function ensureBaseLayer() {
@@ -1049,6 +1191,7 @@ if (svTriangle) {
       const layer = layers[i];
 
       const row = document.createElement('div');
+      row.className = 'layer-row' + (layer.clipped ? ' clipped' : '');
       row.style.display = 'grid';
       row.style.gridTemplateColumns = '22px 1fr 24px';
       row.style.alignItems = 'center';
@@ -1075,6 +1218,11 @@ if (svTriangle) {
         redrawAll();
       };
 
+      const nameContainer = document.createElement('div');
+      nameContainer.style.display = 'flex';
+      nameContainer.style.flexDirection = 'column';
+      nameContainer.style.overflow = 'hidden';
+
       const name = document.createElement('div');
       name.textContent = layer.name;
       name.title = layer.name;
@@ -1084,6 +1232,14 @@ if (svTriangle) {
       name.style.overflow = 'hidden';
       name.style.textOverflow = 'ellipsis';
       name.style.color = document.body.classList.contains('dark') ? '#e5e7eb' : '#111827';
+      nameContainer.appendChild(name);
+
+      if (layer.clipped) {
+        const clipIndicator = document.createElement('span');
+        clipIndicator.className = 'clip-indicator';
+        clipIndicator.textContent = '↳ Clipped';
+        nameContainer.appendChild(clipIndicator);
+      }
 
       const editBtn = document.createElement('button');
       editBtn.type = 'button';
@@ -1127,7 +1283,7 @@ if (svTriangle) {
       };
 
       row.appendChild(eye);
-      row.appendChild(name);
+      row.appendChild(nameContainer);
       row.appendChild(editBtn);
       layerList.appendChild(row);
     }
@@ -1143,6 +1299,7 @@ if (svTriangle) {
       layers: layers.map((L) => ({
         name: L.name,
         visible: L.visible,
+        clipped: L.clipped || false,
         data: L.ctx.getImageData(0, 0, canvasW, canvasH),
       })),
     };
@@ -1161,6 +1318,7 @@ if (svTriangle) {
     snap.layers.forEach((sL) => {
       const L = makeLayer(sL.name || 'Layer');
       L.visible = !!sL.visible;
+      L.clipped = !!sL.clipped;
       L.ctx.putImageData(sL.data, 0, 0);
       layers.push(L);
     });
@@ -1217,8 +1375,21 @@ if (svTriangle) {
     ctxDisplay.clearRect(0, 0, canvasW, canvasH);
   }
 
-  function drawLayerToDisplay(layer) {
+  function drawLayerToDisplay(layer, index) {
     if (!layer || !layer.visible) return;
+    
+    // Handle clipping mask - clip this layer to the content of layer below
+    if (layer.clipped && index > 0) {
+      const belowLayer = layers[index - 1];
+      if (belowLayer && belowLayer.visible) {
+        ctxDisplay.save();
+        ctxDisplay.globalCompositeOperation = 'source-atop';
+        ctxDisplay.drawImage(layer.canvas, 0, 0);
+        ctxDisplay.restore();
+        return;
+      }
+    }
+    
     ctxDisplay.drawImage(layer.canvas, 0, 0);
   }
 
@@ -1233,20 +1404,66 @@ if (svTriangle) {
 
   function redrawAll() {
     clearDisplay();
-    for (let i = 0; i < layers.length; i++) drawLayerToDisplay(layers[i]);
+    for (let i = 0; i < layers.length; i++) drawLayerToDisplay(layers[i], i);
     drawOverlayToDisplay();
     renderSymmetryGuide();
   }
+  
+  // ===== Canvas Zoom =====
+  function updateZoomDisplay() {
+    if (zoomLevelSpan) {
+      zoomLevelSpan.textContent = `${Math.round(canvasZoom * 100)}%`;
+    }
+  }
+
+  function applyZoom() {
+    canvasContainer.style.transform = `scale(${canvasZoom})`;
+    canvasContainer.style.transformOrigin = 'top left';
+    updateZoomDisplay();
+    updateTransformBox();
+  }
+
+  function zoomIn() {
+    canvasZoom = Math.min(ZOOM_MAX, canvasZoom + ZOOM_STEP);
+    applyZoom();
+  }
+
+  function zoomOut() {
+    canvasZoom = Math.max(ZOOM_MIN, canvasZoom - ZOOM_STEP);
+    applyZoom();
+  }
+
+  function zoomReset() {
+    canvasZoom = 1;
+    applyZoom();
+    applyCanvasDisplaySize();
+  }
+
+  on(zoomInBtn, 'click', zoomIn);
+  on(zoomOutBtn, 'click', zoomOut);
+  on(zoomResetBtn, 'click', zoomReset);
+  
+  // Mouse wheel zoom on canvas
+  on(canvasContainer, 'wheel', (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      if (e.deltaY < 0) zoomIn();
+      else zoomOut();
+    }
+  }, { passive: false });
+
   function applyCanvasDisplaySize() {
     const wrapRect = canvasWrap ? canvasWrap.getBoundingClientRect() : null;
     const maxWidth = wrapRect ? wrapRect.width : window.innerWidth;
     const top = wrapRect ? wrapRect.top : 0;
     const maxHeight = Math.max(200, window.innerHeight - top - 24);
-    const scale = Math.min(1, maxWidth / canvasW, maxHeight / canvasH);
-    const displayW = Math.max(1, Math.floor(canvasW * scale));
-    const displayH = Math.max(1, Math.floor(canvasH * scale));
+    // Apply zoom to the display calculation
+    const baseScale = Math.min(1, maxWidth / canvasW, maxHeight / canvasH);
+    const displayW = Math.max(1, Math.floor(canvasW * baseScale));
+    const displayH = Math.max(1, Math.floor(canvasH * baseScale));
     canvasContainer.style.width = `${displayW}px`;
     canvasContainer.style.height = `${displayH}px`;
+    applyZoom();
     renderSymmetryGuide();
     updateTransformBox();
   }
@@ -1356,9 +1573,54 @@ if (svTriangle) {
     redrawAll();
   }
 
+  function moveLayerUp() {
+    // Move active layer up in stack (swap with layer above)
+    if (activeLayerIndex >= layers.length - 1) return;
+    saveState();
+    if (overlayObj) commitOverlay();
+
+    const temp = layers[activeLayerIndex];
+    layers[activeLayerIndex] = layers[activeLayerIndex + 1];
+    layers[activeLayerIndex + 1] = temp;
+    activeLayerIndex = activeLayerIndex + 1;
+
+    rebuildLayerList();
+    redrawAll();
+  }
+
+  function moveLayerDown() {
+    // Move active layer down in stack (swap with layer below)
+    if (activeLayerIndex <= 0) return;
+    saveState();
+    if (overlayObj) commitOverlay();
+
+    const temp = layers[activeLayerIndex];
+    layers[activeLayerIndex] = layers[activeLayerIndex - 1];
+    layers[activeLayerIndex - 1] = temp;
+    activeLayerIndex = activeLayerIndex - 1;
+
+    rebuildLayerList();
+    redrawAll();
+  }
+
+  function toggleClipping() {
+    // Toggle clipping mask for active layer (can't clip the bottom layer)
+    if (activeLayerIndex <= 0) return;
+    saveState();
+    
+    const layer = layers[activeLayerIndex];
+    layer.clipped = !layer.clipped;
+
+    rebuildLayerList();
+    redrawAll();
+  }
+
   on(btnAddLayer, 'click', addLayer);
   on(btnDeleteLayer, 'click', deleteActiveLayer);
   on(btnMergeDown, 'click', mergeDown);
+  on(btnMoveLayerUp, 'click', moveLayerUp);
+  on(btnMoveLayerDown, 'click', moveLayerDown);
+  on(btnClipLayer, 'click', toggleClipping);
 
   // ===== Clear canvas =====
   function clearAllLayers() {
@@ -1652,6 +1914,310 @@ if (svTriangle) {
         const x = from.x + (to.x - from.x) * t;
         const y = from.y + (to.y - from.y) * t;
         drawHeart(ctx, x, y, p.size * 0.65);
+      }
+      ctx.restore();
+    },
+    // Missing brushes - Ink brush with pressure simulation
+    ink(ctx, from, to, p) {
+      const steps = Math.max(1, Math.floor(dist(from, to) / 2));
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = hexToRgba(p.color, p.opacity);
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const x = from.x + (to.x - from.x) * t;
+        const y = from.y + (to.y - from.y) * t;
+        // Variable width based on position for ink effect
+        const variation = Math.sin(i * 0.3) * 0.3 + 0.7;
+        const r = Math.max(1, p.size * 0.5 * variation);
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    },
+    // Fountain pen with angle-sensitive line width
+    fountain(ctx, from, to, p) {
+      const angle = Math.atan2(to.y - from.y, to.x - from.x);
+      const perpAngle = angle + Math.PI / 2;
+      const steps = Math.max(1, Math.floor(dist(from, to) / 2));
+      
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = hexToRgba(p.color, p.opacity);
+      
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const x = from.x + (to.x - from.x) * t;
+        const y = from.y + (to.y - from.y) * t;
+        // Width varies with stroke direction
+        const w = p.size * (0.3 + 0.7 * Math.abs(Math.sin(angle)));
+        const h = p.size * 0.15;
+        
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(perpAngle);
+        ctx.fillRect(-w / 2, -h / 2, w, h);
+        ctx.restore();
+      }
+      ctx.restore();
+    },
+    // Graphite pencil with texture
+    graphite(ctx, from, to, p) {
+      const steps = Math.max(1, Math.floor(dist(from, to) / 1.5));
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const x = from.x + (to.x - from.x) * t;
+        const y = from.y + (to.y - from.y) * t;
+        // Multiple small dots for graphite texture
+        for (let j = 0; j < 3; j++) {
+          const ox = (Math.random() - 0.5) * p.size * 0.4;
+          const oy = (Math.random() - 0.5) * p.size * 0.4;
+          const r = Math.max(0.5, p.size * 0.08 * Math.random());
+          stampDot(ctx, x + ox, y + oy, r, p.color, p.opacity * (0.4 + Math.random() * 0.4));
+        }
+      }
+      ctx.restore();
+    },
+    // Charcoal with rough texture
+    charcoal(ctx, from, to, p) {
+      const steps = Math.max(1, Math.floor(dist(from, to) / 2));
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const x = from.x + (to.x - from.x) * t;
+        const y = from.y + (to.y - from.y) * t;
+        // Rough scattered dots for charcoal effect
+        for (let j = 0; j < 8; j++) {
+          const ox = (Math.random() - 0.5) * p.size * 0.9;
+          const oy = (Math.random() - 0.5) * p.size * 0.9;
+          const r = Math.max(1, p.size * 0.15 * Math.random());
+          stampDot(ctx, x + ox, y + oy, r, p.color, p.opacity * (0.3 + Math.random() * 0.5));
+        }
+      }
+      ctx.restore();
+    },
+    // Crosshatch pattern brush
+    crosshatch(ctx, from, to, p) {
+      const steps = Math.max(1, Math.floor(dist(from, to) / 4));
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = hexToRgba(p.color, p.opacity * 0.6);
+      ctx.lineWidth = Math.max(0.5, p.size * 0.1);
+      ctx.lineCap = 'round';
+      
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const x = from.x + (to.x - from.x) * t;
+        const y = from.y + (to.y - from.y) * t;
+        const len = p.size * 0.8;
+        
+        // Draw crossing lines
+        ctx.beginPath();
+        ctx.moveTo(x - len * 0.5, y - len * 0.5);
+        ctx.lineTo(x + len * 0.5, y + len * 0.5);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(x + len * 0.5, y - len * 0.5);
+        ctx.lineTo(x - len * 0.5, y + len * 0.5);
+        ctx.stroke();
+      }
+      ctx.restore();
+    },
+    // Chalk with dusty texture
+    chalk(ctx, from, to, p) {
+      const steps = Math.max(1, Math.floor(dist(from, to) / 2));
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const x = from.x + (to.x - from.x) * t;
+        const y = from.y + (to.y - from.y) * t;
+        // Dusty scattered effect
+        for (let j = 0; j < 12; j++) {
+          const ox = (Math.random() - 0.5) * p.size * 0.8;
+          const oy = (Math.random() - 0.5) * p.size * 0.5;
+          const r = Math.max(0.5, p.size * 0.1 * Math.random());
+          stampDot(ctx, x + ox, y + oy, r, p.color, p.opacity * (0.2 + Math.random() * 0.6));
+        }
+      }
+      ctx.restore();
+    },
+    // Watercolor with color blending effect
+    watercolor(ctx, from, to, p) {
+      const steps = Math.max(1, Math.floor(dist(from, to) / 3));
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const x = from.x + (to.x - from.x) * t;
+        const y = from.y + (to.y - from.y) * t;
+        
+        // Multiple overlapping transparent circles
+        for (let j = 0; j < 5; j++) {
+          const ox = (Math.random() - 0.5) * p.size * 0.6;
+          const oy = (Math.random() - 0.5) * p.size * 0.6;
+          const r = p.size * (0.3 + Math.random() * 0.4);
+          
+          ctx.fillStyle = hexToRgba(p.color, p.opacity * 0.15);
+          ctx.beginPath();
+          ctx.arc(x + ox, y + oy, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    },
+    // Oil brush with thick strokes
+    oil(ctx, from, to, p) {
+      const steps = Math.max(1, Math.floor(dist(from, to) / 2));
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const x = from.x + (to.x - from.x) * t;
+        const y = from.y + (to.y - from.y) * t;
+        
+        // Thick overlapping strokes
+        const r = p.size * (0.4 + Math.random() * 0.2);
+        ctx.fillStyle = hexToRgba(p.color, p.opacity * 0.85);
+        ctx.beginPath();
+        ctx.arc(x + (Math.random() - 0.5) * p.size * 0.2, y + (Math.random() - 0.5) * p.size * 0.2, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    },
+    // Airbrush with soft edges
+    airbrush(ctx, from, to, p) {
+      const steps = Math.max(1, Math.floor(dist(from, to) / 2));
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const x = from.x + (to.x - from.x) * t;
+        const y = from.y + (to.y - from.y) * t;
+        
+        // Radial gradient for soft airbrush effect
+        const gradient = ctx.createRadialGradient(x, y, 0, x, y, p.size);
+        gradient.addColorStop(0, hexToRgba(p.color, p.opacity * 0.4));
+        gradient.addColorStop(0.5, hexToRgba(p.color, p.opacity * 0.2));
+        gradient.addColorStop(1, hexToRgba(p.color, 0));
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(x, y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    },
+    // Splatter brush
+    splatter(ctx, from, to, p) {
+      const steps = Math.max(1, Math.floor(dist(from, to) / 4));
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = hexToRgba(p.color, p.opacity);
+      
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const x = from.x + (to.x - from.x) * t;
+        const y = from.y + (to.y - from.y) * t;
+        
+        // Random splatter dots
+        const numDots = Math.floor(8 + Math.random() * 12);
+        for (let j = 0; j < numDots; j++) {
+          const angle = Math.random() * Math.PI * 2;
+          const dist = Math.random() * p.size * 1.5;
+          const dx = Math.cos(angle) * dist;
+          const dy = Math.sin(angle) * dist;
+          const r = Math.max(0.5, Math.random() * p.size * 0.2);
+          
+          ctx.beginPath();
+          ctx.arc(x + dx, y + dy, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    },
+    // Glitter brush
+    glitter(ctx, from, to, p) {
+      const steps = Math.max(1, Math.floor(dist(from, to) / 3));
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const x = from.x + (to.x - from.x) * t;
+        const y = from.y + (to.y - from.y) * t;
+        
+        // Sparkle particles
+        const numParticles = Math.floor(5 + Math.random() * 8);
+        for (let j = 0; j < numParticles; j++) {
+          const ox = (Math.random() - 0.5) * p.size * 1.2;
+          const oy = (Math.random() - 0.5) * p.size * 1.2;
+          const r = Math.max(1, Math.random() * p.size * 0.15);
+          
+          // Varying opacity for sparkle effect
+          const sparkleOpacity = p.opacity * (0.5 + Math.random() * 0.5);
+          ctx.fillStyle = hexToRgba(p.color, sparkleOpacity);
+          ctx.beginPath();
+          ctx.arc(x + ox, y + oy, r, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Add bright center
+          ctx.fillStyle = hexToRgba('#ffffff', sparkleOpacity * 0.7);
+          ctx.beginPath();
+          ctx.arc(x + ox, y + oy, r * 0.3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    },
+    // Scatter brush
+    scatter(ctx, from, to, p) {
+      const steps = Math.max(1, Math.floor(dist(from, to) / 5));
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = hexToRgba(p.color, p.opacity);
+      
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const x = from.x + (to.x - from.x) * t;
+        const y = from.y + (to.y - from.y) * t;
+        
+        // Scattered dots in random positions
+        const numDots = Math.floor(3 + Math.random() * 5);
+        for (let j = 0; j < numDots; j++) {
+          const ox = (Math.random() - 0.5) * p.size * 2;
+          const oy = (Math.random() - 0.5) * p.size * 2;
+          const r = Math.max(1, p.size * 0.2 * (0.5 + Math.random() * 0.5));
+          
+          ctx.beginPath();
+          ctx.arc(x + ox, y + oy, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    },
+    // Square brush
+    square(ctx, from, to, p) {
+      const steps = Math.max(1, Math.floor(dist(from, to) / 2));
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = hexToRgba(p.color, p.opacity);
+      
+      const halfSize = p.size * 0.5;
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const x = from.x + (to.x - from.x) * t;
+        const y = from.y + (to.y - from.y) * t;
+        
+        ctx.fillRect(x - halfSize, y - halfSize, p.size, p.size);
       }
       ctx.restore();
     },
@@ -2276,6 +2842,73 @@ function cropCanvasToRect(rect) {
     img.src = clipboardObj.dataUrl;
   }
 
+  // System clipboard paste support
+  async function pasteFromSystemClipboard() {
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        for (const type of item.types) {
+          if (type.startsWith('image/')) {
+            const blob = await item.getType(type);
+            const img = new Image();
+            img.onload = () => {
+              saveState();
+              const scale = Math.min(canvasW / img.width, canvasH / img.height, 1);
+              const w = Math.floor(img.width * scale);
+              const h = Math.floor(img.height * scale);
+              const x = Math.floor((canvasW - w) / 2);
+              const y = Math.floor((canvasH - h) / 2);
+              overlayObj = {
+                img,
+                x,
+                y,
+                w,
+                h,
+                angle: 0,
+                source: 'layer',
+                sourceLayerIndex: activeLayerIndex,
+                cutShape: 'rect',
+              };
+              toolSelect.value = 'transform';
+              currentTool = 'transform';
+              syncShapeOptions();
+              updateTransformBox();
+              renderOverlayOnly();
+            };
+            img.src = URL.createObjectURL(blob);
+            return true;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('System clipboard paste failed:', e);
+    }
+    return false;
+  }
+
+  // System clipboard copy support
+  async function copyToSystemClipboard() {
+    if (!overlayObj) return false;
+    try {
+      const off = document.createElement('canvas');
+      off.width = Math.max(1, Math.round(overlayObj.w));
+      off.height = Math.max(1, Math.round(overlayObj.h));
+      const offCtx = off.getContext('2d');
+      offCtx.drawImage(overlayObj.img, 0, 0, off.width, off.height);
+      
+      const blob = await new Promise(resolve => off.toBlob(resolve, 'image/png'));
+      if (blob) {
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+        return true;
+      }
+    } catch (e) {
+      console.warn('System clipboard copy failed:', e);
+    }
+    return false;
+  }
+
   // ===== Flip canvas (all layers, undoable) =====
   function flipAllHorizontal() {
     saveState();
@@ -2559,6 +3192,7 @@ function cropCanvasToRect(rect) {
       if (!isTypingTarget) {
         prevent();
         copyOverlayToClipboard();
+        copyToSystemClipboard(); // Also copy to system clipboard
       }
       return;
     }
@@ -2572,7 +3206,33 @@ function cropCanvasToRect(rect) {
     if (key === 'v') {
       if (!isTypingTarget) {
         prevent();
-        pasteClipboardAsOverlay();
+        // Try system clipboard first, fallback to internal clipboard
+        pasteFromSystemClipboard().then(success => {
+          if (!success) pasteClipboardAsOverlay();
+        });
+      }
+      return;
+    }
+
+    // Zoom shortcuts
+    if (key === '=' || key === '+') {
+      if (!isTypingTarget) {
+        prevent();
+        zoomIn();
+      }
+      return;
+    }
+    if (key === '-') {
+      if (!isTypingTarget) {
+        prevent();
+        zoomOut();
+      }
+      return;
+    }
+    if (key === '0') {
+      if (!isTypingTarget) {
+        prevent();
+        zoomReset();
       }
       return;
     }
@@ -2839,18 +3499,11 @@ function cropCanvasToRect(rect) {
 
   // ===== Tool dropdown safe defaults =====
   function normalizeBrushOptions() {
-    // If your HTML still has old options, we map them to new ones.
+    // All brushes are now implemented, only map deprecated names
     const map = {
-      square: 'marker',
       textured: 'sketch',
-      airbrush: 'spray',
-      watercolor: 'marker',
-      chalk: 'crayon',
-      oil: 'marker',
-      glitter: 'spray',
       pattern: 'dotted',
       zigzag: 'sketch',
-      scatter: 'spray',
     };
     if (map[currentBrush]) currentBrush = map[currentBrush];
   }

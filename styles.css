@@ -83,7 +83,12 @@ header h1 { margin: 0; color: #ffffff; font-size: 2.6em; }
 }
 
 /* Canvas */
-.canvas-wrap { display: flex; justify-content: center; }
+.canvas-wrap {
+  display: flex;
+  justify-content: center;
+  overflow: auto;
+  max-height: calc(100vh - 220px);
+}
 .canvas-container {
   position: relative;
   width: 800px;
@@ -100,6 +105,7 @@ header h1 { margin: 0; color: #ffffff; font-size: 2.6em; }
   background-position: var(--canvas-bg-position);
   overflow: visible;
   touch-action: none;
+  cursor: crosshair;
 }
 
 /* Backgrounds */
@@ -396,6 +402,36 @@ body.dark .canvas-container.grid {
 .wheel-chip { width: 34px; height: 34px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.12); background: #000; }
 .wheel-hex { font-weight: 900; font-size: 12px; }
 
+/* Color input fields */
+.color-inputs { margin: 10px 0; display: flex; flex-direction: column; gap: 6px; }
+.color-input-row { display: flex; align-items: center; gap: 6px; }
+.color-input-row label { font-weight: 700; font-size: 12px; min-width: 18px; }
+.color-input-row input[type="number"], .color-input-row input[type="text"] {
+  width: 52px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(0,0,0,0.12);
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.color-input-row input#colorHexInput { width: 80px; }
+
+/* Zoom controls */
+.zoom-controls { display: flex; align-items: center; gap: 6px; }
+#zoomLevel { font-weight: 700; min-width: 50px; text-align: center; }
+
+/* Layer clipping indicator */
+.layer-row.clipped {
+  border-left: 3px solid #ef4444;
+  margin-left: 10px;
+}
+.layer-row .clip-indicator {
+  font-size: 10px;
+  color: #ef4444;
+  font-weight: 700;
+}
+
 /* Dark mode */
 body.dark {
   background: linear-gradient(90deg, #0b1020, #1a1020, #121427);
@@ -451,4 +487,12 @@ body.dark .btn {
 }
 body.dark .btn.primary {
   background: rgba(59,130,246,0.22);
+}
+
+/* Dark mode color inputs */
+body.dark .color-input-row input[type="number"],
+body.dark .color-input-row input[type="text"] {
+  background: rgba(17,24,39,0.92);
+  border-color: rgba(255,255,255,0.12);
+  color: #e5e7eb;
 }
