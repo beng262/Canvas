@@ -909,7 +909,7 @@ setPreview = function(hex) {
 // HSV input handlers
 if (colorHueInput) {
   colorHueInput.addEventListener("input", () => {
-    const h = clamp(parseInt(colorHueInput.value, 10) || 0, 0, 360);
+    const h = clamp(parseInt(colorHueInput.value, 10) || 0, 0, 359);
     const s = clamp(parseInt(colorSatInput?.value, 10) || 0, 0, 100) / 100;
     const v = clamp(parseInt(colorValInput?.value, 10) || 100, 0, 100) / 100;
     const rgb = hsvToRgb(h, s, v);
@@ -926,7 +926,7 @@ if (colorHueInput) {
 
 if (colorSatInput) {
   colorSatInput.addEventListener("input", () => {
-    const h = clamp(parseInt(colorHueInput?.value, 10) || 0, 0, 360);
+    const h = clamp(parseInt(colorHueInput?.value, 10) || 0, 0, 359);
     const s = clamp(parseInt(colorSatInput.value, 10) || 0, 0, 100) / 100;
     const v = clamp(parseInt(colorValInput?.value, 10) || 100, 0, 100) / 100;
     const rgb = hsvToRgb(h, s, v);
@@ -941,7 +941,7 @@ if (colorSatInput) {
 
 if (colorValInput) {
   colorValInput.addEventListener("input", () => {
-    const h = clamp(parseInt(colorHueInput?.value, 10) || 0, 0, 360);
+    const h = clamp(parseInt(colorHueInput?.value, 10) || 0, 0, 359);
     const s = clamp(parseInt(colorSatInput?.value, 10) || 0, 0, 100) / 100;
     const v = clamp(parseInt(colorValInput.value, 10) || 100, 0, 100) / 100;
     const rgb = hsvToRgb(h, s, v);
@@ -1445,6 +1445,9 @@ if (colorHexInput) {
   }
   
   // ===== Canvas Zoom =====
+  // Set transform-origin once during initialization
+  canvasContainer.style.transformOrigin = 'top left';
+  
   function updateZoomDisplay() {
     if (zoomLevelSpan) {
       zoomLevelSpan.textContent = `${Math.round(canvasZoom * 100)}%`;
@@ -1453,7 +1456,6 @@ if (colorHexInput) {
 
   function applyZoom() {
     canvasContainer.style.transform = `scale(${canvasZoom})`;
-    canvasContainer.style.transformOrigin = 'top left';
     updateZoomDisplay();
     updateTransformBox();
   }
@@ -2167,9 +2169,9 @@ if (colorHexInput) {
         const numDots = Math.floor(8 + Math.random() * 12);
         for (let j = 0; j < numDots; j++) {
           const angle = Math.random() * Math.PI * 2;
-          const dist = Math.random() * p.size * 1.5;
-          const dx = Math.cos(angle) * dist;
-          const dy = Math.sin(angle) * dist;
+          const splatDist = Math.random() * p.size * 1.5;
+          const dx = Math.cos(angle) * splatDist;
+          const dy = Math.sin(angle) * splatDist;
           const r = Math.max(0.5, Math.random() * p.size * 0.2);
           
           ctx.beginPath();
