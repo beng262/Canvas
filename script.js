@@ -892,15 +892,17 @@ function updateColorInputs(hex) {
   if (colorHexInput) colorHexInput.value = hex.toUpperCase();
 }
 
-function setPreviewWithInputs(hex) {
-  setPreview(hex);
-  updateColorInputs(hex);
+// Enhanced setPreview that also updates input fields
+// Store original reference as a named internal function
+function setPreviewInternal(hex) {
+  wheelNewColor = (hex || "#000000").toUpperCase();
+  if (wheelChip) wheelChip.style.background = wheelNewColor;
+  if (wheelHex) wheelHex.textContent = wheelNewColor;
 }
 
-// Update inputs when preview changes
-const originalSetPreview = setPreview;
+// Wrap setPreview to also sync input fields
 setPreview = function(hex) {
-  originalSetPreview(hex);
+  setPreviewInternal(hex);
   updateColorInputs(hex);
 };
 
@@ -1375,37 +1377,70 @@ if (colorHexInput) {
     ctxDisplay.clearRect(0, 0, canvasW, canvasH);
   }
 
-  function drawLayerToDisplay(layer, index) {
-    if (!layer || !layer.visible) return;
+  function redrawAll() {
+    clearDisplay();
     
-    // Handle clipping mask - clip this layer to the content of layer below
-    if (layer.clipped && index > 0) {
-      const belowLayer = layers[index - 1];
-      if (belowLayer && belowLayer.visible) {
-        ctxDisplay.save();
-        ctxDisplay.globalCompositeOperation = 'source-atop';
+    // Group layers for proper clipping mask rendering
+    let i = 0;
+    while (i < layers.length) {
+      const layer = layers[i];
+      
+      if (!layer.visible) {
+        i++;
+        continue;
+      }
+      
+      // Check if this layer is the base of a clipping group
+      // A clipping group starts with a non-clipped layer followed by one or more clipped layers
+      let j = i + 1;
+      while (j < layers.length && layers[j].clipped) {
+        j++;
+      }
+      
+      // If there are clipped layers above this one
+      if (j > i + 1) {
+        // Create an offscreen canvas for the clipping group
+        const groupCanvas = document.createElement('canvas');
+        groupCanvas.width = canvasW;
+        groupCanvas.height = canvasH;
+        const groupCtx = groupCanvas.getContext('2d');
+        
+        // Draw the base layer
+        if (layer.visible) {
+          groupCtx.drawImage(layer.canvas, 0, 0);
+        }
+        
+        // Draw clipped layers using destination-in-like compositing
+        for (let k = i + 1; k < j; k++) {
+          const clippedLayer = layers[k];
+          if (clippedLayer.visible) {
+            // Use source-atop to clip the layer content to existing pixels
+            groupCtx.globalCompositeOperation = 'source-atop';
+            groupCtx.drawImage(clippedLayer.canvas, 0, 0);
+          }
+        }
+        
+        // Draw the composed group to display
+        groupCtx.globalCompositeOperation = 'source-over';
+        ctxDisplay.drawImage(groupCanvas, 0, 0);
+        
+        i = j;
+      } else {
+        // Regular layer, no clipping
         ctxDisplay.drawImage(layer.canvas, 0, 0);
-        ctxDisplay.restore();
-        return;
+        i++;
       }
     }
     
-    ctxDisplay.drawImage(layer.canvas, 0, 0);
-  }
-
-  function drawOverlayToDisplay() {
-    if (!overlayObj) return;
-    ctxDisplay.save();
-    ctxDisplay.translate(overlayObj.x, overlayObj.y);
-    ctxDisplay.rotate(overlayObj.angle || 0);
-    ctxDisplay.drawImage(overlayObj.img, 0, 0, overlayObj.w, overlayObj.h);
-    ctxDisplay.restore();
-  }
-
-  function redrawAll() {
-    clearDisplay();
-    for (let i = 0; i < layers.length; i++) drawLayerToDisplay(layers[i], i);
-    drawOverlayToDisplay();
+    // Draw overlay
+    if (overlayObj) {
+      ctxDisplay.save();
+      ctxDisplay.translate(overlayObj.x, overlayObj.y);
+      ctxDisplay.rotate(overlayObj.angle || 0);
+      ctxDisplay.drawImage(overlayObj.img, 0, 0, overlayObj.w, overlayObj.h);
+      ctxDisplay.restore();
+    }
+    
     renderSymmetryGuide();
   }
   
@@ -3499,7 +3534,7 @@ function cropCanvasToRect(rect) {
 
   // ===== Tool dropdown safe defaults =====
   function normalizeBrushOptions() {
-    // All brushes are now implemented, only map deprecated names
+    // Legacy name mappings from previous versions - all current brushes are implemented
     const map = {
       textured: 'sketch',
       pattern: 'dotted',
