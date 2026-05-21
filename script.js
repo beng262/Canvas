@@ -3244,9 +3244,14 @@ function cropCanvasToRect(rect) {
       if (!isTypingTarget) {
         prevent();
         // Try system clipboard first, fallback to internal clipboard
-        pasteFromSystemClipboard().then(success => {
-          if (!success) pasteClipboardAsOverlay();
-        });
+        pasteFromSystemClipboard()
+          .then(success => {
+            if (!success) pasteClipboardAsOverlay();
+          })
+          .catch(() => {
+            // On any error, fallback to internal clipboard
+            pasteClipboardAsOverlay();
+          });
       }
       return;
     }
