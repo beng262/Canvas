@@ -9,11 +9,22 @@
 <body>
   <!-- Header -->
   <header>
-    <h1>DrawNow!</h1>
+    <div>
+      <h1>DrawNow!</h1>
+      <p>Draw freely. Edit precisely.</p>
+    </div>
   </header>
 
   <!-- Toolbar -->
   <div class="toolbar">
+    <!-- View / pixel zoom -->
+    <div class="toolbar-item zoom-controls" aria-label="Canvas zoom controls">
+      <button id="zoomOut" class="compact-btn" type="button" title="Zoom out (-)">−</button>
+      <button id="zoomLevel" class="zoom-readout" type="button" title="Reset to 100%">100%</button>
+      <button id="zoomIn" class="compact-btn" type="button" title="Zoom in (+)">+</button>
+      <button id="zoomFit" class="compact-btn text-btn" type="button" title="Fit canvas in workspace">Fit</button>
+    </div>
+
     <!-- Brush size -->
     <div class="toolbar-item">
       <label for="brushSize">Size</label>
@@ -54,6 +65,7 @@
         <option value="pen">Pen</option>
         <option value="eraser">Eraser</option>
         <option value="fill">Fill</option>
+        <option value="eyedropper">Eyedropper</option>
         <option value="shape">Shapes</option>
         <option value="select">Select Area</option>
         <option value="lasso">Lasso Select</option>
@@ -67,29 +79,40 @@
     <div class="toolbar-item">
       <label for="brushType">Brush</label>
       <select id="brushType">
-        <option value="round">Round</option>
-        <option value="marker">Marker</option>
-        <option value="ink">Ink</option>
-        <option value="fountain">Fountain</option>
-        <option value="pencil">Pencil</option>
-        <option value="graphite">Graphite</option>
-        <option value="sketch">Sketch</option>
+        <option value="round">Studio Round</option>
+        <option value="ink">Pressure Ink</option>
+        <option value="pencil">Graphite Pencil</option>
+        <option value="marker">Soft Marker</option>
         <option value="charcoal">Charcoal</option>
-        <option value="crosshatch">Crosshatch</option>
-        <option value="chalk">Chalk</option>
-        <option value="crayon">Crayon</option>
-        <option value="watercolor">Watercolor</option>
-        <option value="oil">Oil</option>
-        <option value="spray">Spray</option>
+        <option value="watercolor">Watercolor Glaze</option>
         <option value="airbrush">Airbrush</option>
-        <option value="splatter">Splatter</option>
-        <option value="glitter">Glitter</option>
-        <option value="scatter">Scatter</option>
+        <option value="pixel">Pixel Pencil</option>
         <option value="dotted">Dotted</option>
-        <option value="square">Square</option>
-        <option value="star">Star</option>
-        <option value="heart">Heart</option>
+        <option value="star">Star Stamp</option>
+        <option value="heart">Heart Stamp</option>
       </select>
+    </div>
+
+    <div class="toolbar-item tool-options" id="fillOptions" hidden>
+      <label for="fillTolerance">Tolerance</label>
+      <input type="range" id="fillTolerance" min="0" max="100" value="24" />
+      <span id="fillToleranceValue">24</span>
+      <label class="check-row"><input type="checkbox" id="fillSampleAll" checked /> Sample all</label>
+      <label for="fillGap">Gap</label>
+      <select id="fillGap" title="Close small gaps before filling">
+        <option value="0">Off</option>
+        <option value="1" selected>1 px</option>
+        <option value="2">2 px</option>
+        <option value="3">3 px</option>
+      </select>
+    </div>
+
+    <div class="toolbar-item tool-options" id="selectionActions" hidden>
+      <span class="tool-options-label">Selection</span>
+      <button id="selectionApply" class="compact-btn text-btn" type="button">Apply</button>
+      <button id="selectionDuplicate" class="compact-btn text-btn" type="button">Duplicate</button>
+      <button id="selectionFlip" class="compact-btn text-btn" type="button">Flip</button>
+      <button id="selectionDelete" class="compact-btn text-btn danger" type="button">Delete</button>
     </div>
 
     <!-- Shape options -->
@@ -207,6 +230,7 @@
         <canvas id="drawingCanvas" width="800" height="600"></canvas>
         <canvas id="inputOverlay" width="800" height="600"></canvas>
         <canvas id="lassoOverlay" class="lasso-overlay" width="800" height="600"></canvas>
+        <div id="pixelGrid" class="pixel-grid" aria-hidden="true"></div>
 
         <div id="selectionOverlay" class="selection-overlay" style="display:none;"></div>
         <div id="cropOverlay" class="crop-overlay" style="display:none;"></div>
@@ -251,6 +275,19 @@
       </div>
 
       <div id="layersList" class="layers-list"></div>
+
+      <div class="layer-properties" aria-label="Active layer properties">
+        <div class="property-row">
+          <label for="layerOpacity">Layer opacity</label>
+          <span id="layerOpacityValue">100%</span>
+        </div>
+        <input id="layerOpacity" type="range" min="0" max="100" value="100" />
+        <label class="clip-control" title="Mask this layer to the transparency of the nearest layer below">
+          <input id="clipLayer" type="checkbox" />
+          <span>Clip to layer below</span>
+        </label>
+        <div id="layerHint" class="layer-hint">Layer 1 · Normal</div>
+      </div>
     </aside>
   </div>
 
@@ -315,7 +352,7 @@
         <div class="chip-row">
           <div class="chip-label">New</div>
           <div id="wheelChip" class="wheel-chip"></div>
-          <div id="wheelHex" class="wheel-hex">#000000</div>
+          <input id="wheelHex" class="wheel-hex-input" value="#000000" maxlength="7" aria-label="New color hex value" />
         </div>
       </div>
     </div>
