@@ -2650,6 +2650,7 @@ function cropCanvasToRect(rect) {
     if (!clipboardObj) return;
     const img = new Image();
     img.onload = () => {
+      if (overlayObj) commitOverlay();
       saveState();
       const w = clipboardObj.w;
       const h = clipboardObj.h;
@@ -2709,6 +2710,7 @@ function cropCanvasToRect(rect) {
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
+        if (overlayObj) commitOverlay();
         saveState();
 
         const scale = Math.min(canvasW / img.width, canvasH / img.height, 1);
