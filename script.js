@@ -2922,6 +2922,9 @@ function cropCanvasToRect(rect) {
     // Escape cancels active interactions
     if (key === 'escape') {
       prevent();
+      shapeActive = false;
+      isPointerDown = false;
+      ctxInputOverlay.clearRect(0, 0, canvasW, canvasH);
       isSelecting = false;
       isLassoing = false;
       isCropping = false;
