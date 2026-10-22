@@ -2014,12 +2014,6 @@ if (svTriangle) {
     const brushName = currentBrush || 'round';
     const fn = BRUSH[brushName] || BRUSH.round;
 
-    // Spacing: if enabled, stamp strokes become discrete.
-    if (brushSpacingPx > 0 && brushName !== 'round' && brushName !== 'marker' && brushName !== 'neon') {
-      if (!shouldStamp(to)) return;
-      lastStampPt = { ...to };
-    }
-
     fn(L.ctx, from, to, p);
   }
 
