@@ -749,9 +749,9 @@ function drawSvTriangle() {
   ctx.strokeStyle = "rgba(17,24,39,0.55)";
   ctx.stroke();
 
-  const wa = 1 - triSV.v;
+  const wa = triSV.v * (1 - triSV.s);
   const wc = triSV.v * triSV.s;
-  const wb = 1 - wa - wc;
+  const wb = 1 - triSV.v;
 
   const px = wa * ax + wb * bx + wc * cx;
   const py = wa * ay + wb * by + wc * cy;
@@ -812,7 +812,7 @@ function pickSvTriangle(clientX, clientY) {
   const b = barycentric(pos.x, pos.y, ax, ay, bx, by, cx, cy);
   const wa = b.wa, wc = b.wc;
 
-  const v = clamp01(1 - wa);
+  const v = clamp01(wa + wc);
   const s = v <= 0 ? 0 : clamp01(wc / v);
 
   triSV = { s, v };
