@@ -2774,6 +2774,8 @@ function cropCanvasToRect(rect) {
     // If overlay exists, export it too (without committing)
     if (overlayObj) {
       exportCtx.save();
+      const sourceLayer = layerAt(overlayObj.sourceLayerIndex);
+      exportCtx.globalAlpha = sourceLayer && sourceLayer.opacity != null ? sourceLayer.opacity : 1;
       exportCtx.translate(overlayObj.x, overlayObj.y);
       exportCtx.rotate(overlayObj.angle || 0);
       exportCtx.drawImage(overlayObj.img, 0, 0, overlayObj.w, overlayObj.h);
