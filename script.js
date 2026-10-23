@@ -3074,7 +3074,7 @@ function cropCanvasToRect(rect) {
 
       // Symmetry mirror
       if (symmetryCheckbox && symmetryCheckbox.checked) {
-        const m = { x: canvasW - pt.x, y: pt.y };
+        const m = { x: canvasW - pt.x, y: pt.y, pressure: pt.pressure };
         doBrushStroke(m, m);
       }
 
@@ -3190,8 +3190,8 @@ function cropCanvasToRect(rect) {
 
       doBrushStroke(from, to);
       if (symmetryCheckbox && symmetryCheckbox.checked) {
-        const mf = { x: canvasW - from.x, y: from.y };
-        const mt = { x: canvasW - to.x, y: to.y };
+        const mf = { x: canvasW - from.x, y: from.y, pressure: from.pressure };
+        const mt = { x: canvasW - to.x, y: to.y, pressure: to.pressure };
         doBrushStroke(mf, mt);
       }
 
