@@ -2842,6 +2842,10 @@ function cropCanvasToRect(rect) {
       overlayObj.x = startState.x + dx;
       overlayObj.y = startState.y + dy;
     } else if (transformMode === 'resize') {
+      const cos = Math.cos(startState.angle);
+      const sin = Math.sin(startState.angle);
+      const localDx = dx * cos + dy * sin;
+      const localDy = -dx * sin + dy * cos;
       let x = startState.x;
       let y = startState.y;
       let w = startState.w;
@@ -2850,10 +2854,10 @@ function cropCanvasToRect(rect) {
       const keepAspect = e.shiftKey;
 
       const applyResize = (left, top, right, bottom) => {
-        if (left) { x = startState.x + dx; w = startState.w - dx; }
-        if (right) { w = startState.w + dx; }
-        if (top) { y = startState.y + dy; h = startState.h - dy; }
-        if (bottom) { h = startState.h + dy; }
+        if (left) { w = startState.w - localDx; }
+        if (right) { w = startState.w + localDx; }
+        if (top) { h = startState.h - localDy; }
+        if (bottom) { h = startState.h + localDy; }
         w = Math.max(5, w);
         h = Math.max(5, h);
         if (keepAspect) {
@@ -2861,8 +2865,10 @@ function cropCanvasToRect(rect) {
           if (newAspect > aspect) h = w / aspect;
           else w = h * aspect;
         }
-        if (left) x = startState.x + (startState.w - w);
-        if (top) y = startState.y + (startState.h - h);
+        const offsetX = left ? startState.w - w : 0;
+        const offsetY = top ? startState.h - h : 0;
+        x = startState.x + offsetX * cos - offsetY * sin;
+        y = startState.y + offsetX * sin + offsetY * cos;
       };
 
       const map = {
