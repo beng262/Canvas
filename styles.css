@@ -422,7 +422,11 @@ body.dark .canvas-container.grid {
   position: fixed;
   right: 14px;
   bottom: 14px;
-  width: 320px;
+  box-sizing: border-box;
+  width: 350px;
+  max-width: calc(100vw - 28px);
+  max-height: calc(100dvh - 28px);
+  overflow-y: auto;
   background: rgba(255,255,255,0.96);
   border: 1px solid rgba(0,0,0,0.12);
   border-radius: 20px;
