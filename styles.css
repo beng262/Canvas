@@ -225,6 +225,12 @@ body.dark .canvas-container.grid {
   background-size: var(--pixel-size, 8px) var(--pixel-size, 8px);
 }
 .pixel-grid.visible { display: block; }
+.canvas-container.dark .pixel-grid,
+.canvas-container.transDark .pixel-grid {
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.2) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.2) 1px, transparent 1px);
+}
 
 /* Symmetry guide */
 .symmetry-guide {
