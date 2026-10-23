@@ -395,6 +395,7 @@ body.dark .canvas-container.grid {
 }
 .modal-card {
   width: 340px;
+  max-width: calc(100vw - 30px);
   background: #ffffff;
   border-radius: 16px;
   padding: 14px;
@@ -403,12 +404,15 @@ body.dark .canvas-container.grid {
 .modal-title { font-weight: 900; font-size: 18px; margin-bottom: 10px; }
 .modal-row {
   display: grid;
-  grid-template-columns: 90px 1fr;
+  grid-template-columns: 90px minmax(0, 1fr);
   gap: 10px;
   align-items: center;
   margin-bottom: 10px;
 }
 .modal-row input, .modal-row select {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   height: 34px;
   border-radius: 10px;
   border: 1px solid rgba(0,0,0,0.12);
