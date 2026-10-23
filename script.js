@@ -2837,6 +2837,12 @@ function cropCanvasToRect(rect) {
       h: overlayObj.h,
       angle: overlayObj.angle || 0,
     };
+    if (transformMode === 'rotate') {
+      const cos = Math.cos(startState.angle);
+      const sin = Math.sin(startState.angle);
+      startState.centerX = startState.x + startState.w / 2 * cos - startState.h / 2 * sin;
+      startState.centerY = startState.y + startState.w / 2 * sin + startState.h / 2 * cos;
+    }
 
     e.preventDefault();
   });
@@ -2899,11 +2905,15 @@ function cropCanvasToRect(rect) {
       overlayObj.w = w;
       overlayObj.h = h;
     } else if (transformMode === 'rotate') {
-      const cx = startState.x + startState.w / 2;
-      const cy = startState.y + startState.h / 2;
+      const cx = startState.centerX;
+      const cy = startState.centerY;
       const a0 = Math.atan2(startMouse.y - cy, startMouse.x - cx);
       const a1 = Math.atan2(p.y - cy, p.x - cx);
       overlayObj.angle = startState.angle + (a1 - a0);
+      const cos = Math.cos(overlayObj.angle);
+      const sin = Math.sin(overlayObj.angle);
+      overlayObj.x = cx - startState.w / 2 * cos + startState.h / 2 * sin;
+      overlayObj.y = cy - startState.w / 2 * sin - startState.h / 2 * cos;
     }
 
     updateTransformBox();
