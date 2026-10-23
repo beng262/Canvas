@@ -184,7 +184,7 @@ body.dark .canvas-container.grid {
     linear-gradient(-45deg, rgba(0,0,0,0.06) 25%, transparent 25%),
     linear-gradient(45deg, transparent 75%, rgba(0,0,0,0.06) 75%),
     linear-gradient(-45deg, transparent 75%, rgba(0,0,0,0.06) 75%);
-  --canvas-bg-size: 26px 26px;
+  --canvas-bg-size: 26px 26px, 26px 26px, 26px 26px, 26px 26px;
   --canvas-bg-position: 0 0, 0 13px, 13px -13px, -13px 0;
 }
 .canvas-container.transDark {
@@ -194,7 +194,7 @@ body.dark .canvas-container.grid {
     linear-gradient(-45deg, rgba(255,255,255,0.08) 25%, transparent 25%),
     linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.08) 75%),
     linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.08) 75%);
-  --canvas-bg-size: 26px 26px;
+  --canvas-bg-size: 26px 26px, 26px 26px, 26px 26px, 26px 26px;
   --canvas-bg-position: 0 0, 0 13px, 13px -13px, -13px 0;
 }
 
