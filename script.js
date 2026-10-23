@@ -156,14 +156,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   function initTheme() {
-    let stored = localStorage.getItem(THEME_KEY);
+    let stored = 'light';
+    try {
+      stored = localStorage.getItem(THEME_KEY);
+    } catch (e) {
+      console.warn('Theme storage read failed', e);
+    }
     if (stored !== 'dark' && stored !== 'light') stored = 'light';
     applyTheme(stored);
   }
   on(darkModeToggle, 'click', () => {
     const isDark = document.body.classList.contains('dark');
     const next = isDark ? 'light' : 'dark';
-    localStorage.setItem(THEME_KEY, next);
+    try {
+      localStorage.setItem(THEME_KEY, next);
+    } catch (e) {
+      console.warn('Theme storage write failed', e);
+    }
     applyTheme(next);
   });
   initTheme();
