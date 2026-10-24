@@ -510,6 +510,7 @@ body.dark .wheel-hex-input { background: #111827; color: #e5e7eb; border-color: 
 body.dark .tool-options-label { color: #e5e7eb; }
 body.dark .layer-properties { border-color: rgba(255,255,255,0.12); }
 body.dark .layer-hint { color: rgba(229,231,235,0.7); }
+body.dark .clipped-badge { color: #c4b5fd; }
 
 @media (max-width: 920px) {
   .workspace { grid-template-columns: 1fr; }
