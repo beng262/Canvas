@@ -559,3 +559,24 @@ body.dark .btn {
 body.dark .btn.primary {
   background: rgba(59,130,246,0.22);
 }
+
+/* Layer list rows: colours follow the theme */
+.layer-row { border: 1px solid rgba(0,0,0,0.08); background: rgba(255,255,255,0.75); outline: none; }
+.layer-row.active { border: 2px solid #3b82f6; background: rgba(59,130,246,0.12); outline: none; }
+.layer-row .name, .layer-row .layer-edit { color: #111827; }
+body.dark .layer-row { background: rgba(17,24,39,0.65); border-color: rgba(255,255,255,0.12); }
+body.dark .layer-row.active { background: rgba(59,130,246,0.18); border-color: #3b82f6; }
+body.dark .layer-row .name, body.dark .layer-row .layer-edit { color: #e5e7eb; }
+
+/* Reordering */
+.layer-grip { display: inline-flex; align-items: center; justify-content: center; cursor: grab; touch-action: none; color: rgba(17,24,39,0.45); }
+.layer-grip svg { fill: currentColor; }
+body.dark .layer-grip { color: rgba(229,231,235,0.5); }
+.layer-row.dragging { opacity: 0.55; cursor: grabbing; }
+.layer-row.drop-above { box-shadow: 0 -3px 0 #3b82f6; }
+.layer-row.drop-below { box-shadow: 0 3px 0 #3b82f6; }
+.side-actions { gap: 6px; }
+.side-actions .icon-btn { width: 30px; height: 30px; }
+.icon-btn:disabled { opacity: 0.4; cursor: default; }
+.icon-btn:disabled:hover { background: #ffffff; }
+body.dark .icon-btn:disabled:hover { background: rgba(17,24,39,0.92); }

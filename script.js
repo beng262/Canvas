@@ -395,6 +395,8 @@ if (!layerList) {
 const btnAddLayer = document.getElementById('addLayerBtn');
 const btnDeleteLayer = document.getElementById('deleteLayerBtn');
 const btnMergeDown = document.getElementById('mergeLayerBtn');
+const btnLayerUp = document.getElementById('layerUpBtn');
+const btnLayerDown = document.getElementById('layerDownBtn');
 
 
 // ===== Color wheels (two separate wheel options, working) =====
@@ -1119,6 +1121,8 @@ if (svTriangle) {
     if (layerHint) {
       layerHint.textContent = layer.name + ' · ' + (layer.clipped ? 'Clipped' : 'Normal');
     }
+    if (btnLayerUp) btnLayerUp.disabled = activeLayerIndex >= layers.length - 1;
+    if (btnLayerDown) btnLayerDown.disabled = activeLayerIndex <= 0;
   }
 
   function rebuildLayerList() {
@@ -1130,18 +1134,23 @@ if (svTriangle) {
       const layer = layers[i];
 
       const row = document.createElement('div');
+      // Colours come from styles.css (.layer-row, body.dark .layer-row), so switching theme recolours at once
+      row.className = 'layer-row' + (i === activeLayerIndex ? ' active' : '');
+      row.dataset.index = String(i);
       row.style.display = 'grid';
-      row.style.gridTemplateColumns = '22px 1fr auto 24px';
+      row.style.gridTemplateColumns = '14px 22px 1fr auto 24px';
       row.style.alignItems = 'center';
       row.style.gap = '6px';
       row.style.padding = '6px 8px';
       row.style.borderRadius = '10px';
       row.style.cursor = 'pointer';
       row.style.userSelect = 'none';
-      row.style.border = i === activeLayerIndex ? '2px solid #3b82f6' : '1px solid rgba(0,0,0,0.08)';
-      row.style.background = document.body.classList.contains('dark')
-        ? (i === activeLayerIndex ? 'rgba(59,130,246,0.18)' : 'rgba(17,24,39,0.65)')
-        : (i === activeLayerIndex ? 'rgba(59,130,246,0.12)' : 'rgba(255,255,255,0.75)');
+
+      // Drag handle (touch drags start here; with a mouse the whole row drags)
+      const grip = document.createElement('span');
+      grip.className = 'layer-grip';
+      grip.title = 'Drag to reorder';
+      grip.innerHTML = '<svg viewBox="0 0 10 16" width="10" height="16" aria-hidden="true"><circle cx="3" cy="3" r="1.4"/><circle cx="7" cy="3" r="1.4"/><circle cx="3" cy="8" r="1.4"/><circle cx="7" cy="8" r="1.4"/><circle cx="3" cy="13" r="1.4"/><circle cx="7" cy="13" r="1.4"/></svg>';
 
       const eye = document.createElement('input');
       eye.type = 'checkbox';
@@ -1157,6 +1166,7 @@ if (svTriangle) {
       };
 
       const name = document.createElement('div');
+      name.className = 'name';
       name.textContent = layer.name;
       name.title = layer.name;
       name.style.fontSize = '12px';
@@ -1164,7 +1174,6 @@ if (svTriangle) {
       name.style.whiteSpace = 'nowrap';
       name.style.overflow = 'hidden';
       name.style.textOverflow = 'ellipsis';
-      name.style.color = document.body.classList.contains('dark') ? '#e5e7eb' : '#111827';
 
       const clipBadge = document.createElement('span');
       clipBadge.className = 'clipped-badge';
@@ -1172,6 +1181,7 @@ if (svTriangle) {
       clipBadge.title = layer.clipped ? 'Clipped to the layer below' : '';
 
       const editBtn = document.createElement('button');
+      editBtn.className = 'layer-edit';
       editBtn.type = 'button';
       editBtn.title = 'Rename layer';
       editBtn.style.border = 'none';
@@ -1183,7 +1193,6 @@ if (svTriangle) {
       editBtn.style.display = 'inline-flex';
       editBtn.style.alignItems = 'center';
       editBtn.style.justifyContent = 'center';
-      editBtn.style.color = document.body.classList.contains('dark') ? '#e5e7eb' : '#111827';
 
       // Pencil icon
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -1205,7 +1214,9 @@ if (svTriangle) {
         rebuildLayerList();
       };
 
+      row.addEventListener('pointerdown', startLayerDrag);
       row.onclick = () => {
+        if (suppressLayerClick) return;
         if (overlayObj) commitOverlay();
         activeLayerIndex = i;
         rebuildLayerList();
@@ -1213,6 +1224,7 @@ if (svTriangle) {
         redrawAll();
       };
 
+      row.appendChild(grip);
       row.appendChild(eye);
       row.appendChild(name);
       row.appendChild(clipBadge);
@@ -1565,9 +1577,80 @@ if (svTriangle) {
     redrawAll();
   }
 
+  // Move a layer from one stack position to another (0 = bottom). The active layer follows it.
+  function moveLayer(from, to) {
+    if (from === to || from < 0 || to < 0 || from >= layers.length || to >= layers.length) return;
+    if (overlayObj) commitOverlay();
+    saveState();
+    const moved = layers.splice(from, 1)[0];
+    layers.splice(to, 0, moved);
+    if (activeLayerIndex === from) activeLayerIndex = to;
+    else if (from < activeLayerIndex && to >= activeLayerIndex) activeLayerIndex -= 1;
+    else if (from > activeLayerIndex && to <= activeLayerIndex) activeLayerIndex += 1;
+    // the bottom layer has nothing below it to clip to
+    if (layers[0] && layers[0].clipped) layers[0].clipped = false;
+    rebuildLayerList();
+    redrawAll();
+  }
+
+  // Drag to reorder in the list (the list shows the top layer first)
+  let layerDrag = null;
+  let suppressLayerClick = false;
+  function clearDropMarks() {
+    layerList.querySelectorAll('.drop-above, .drop-below').forEach((r) => r.classList.remove('drop-above', 'drop-below'));
+  }
+  function startLayerDrag(e) {
+    if (e.button !== 0) return;
+    if (e.target.closest('input, button')) return;
+    const onGrip = !!e.target.closest('.layer-grip');
+    if (e.pointerType !== 'mouse' && !onGrip) return;
+    const row = e.currentTarget;
+    layerDrag = { from: Number(row.dataset.index), y: e.clientY, row, active: false, target: null, id: e.pointerId };
+    if (onGrip) e.preventDefault();
+  }
+  function moveLayerDrag(e) {
+    const d = layerDrag;
+    if (!d || e.pointerId !== d.id) return;
+    if (!d.active) {
+      if (Math.abs(e.clientY - d.y) < 6) return;
+      d.active = true;
+      d.row.classList.add('dragging');
+    }
+    e.preventDefault();
+    clearDropMarks();
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const over = el && el.closest ? el.closest('.layer-row') : null;
+    if (!over || over === d.row || !layerList.contains(over)) { d.target = null; return; }
+    const r = over.getBoundingClientRect();
+    const place = e.clientY < r.top + r.height / 2 ? 'above' : 'below';
+    over.classList.add('drop-' + place);
+    d.target = { index: Number(over.dataset.index), place };
+  }
+  function endLayerDrag(e) {
+    const d = layerDrag;
+    if (!d || e.pointerId !== d.id) return;
+    layerDrag = null;
+    clearDropMarks();
+    d.row.classList.remove('dragging');
+    if (!d.active) return;
+    suppressLayerClick = true;
+    setTimeout(() => { suppressLayerClick = false; }, 0);
+    if (e.type === 'pointercancel' || !d.target) return;
+    const t = d.target.index;
+    const from = d.from;
+    // "above" in the list = higher in the stack
+    const to = d.target.place === 'above' ? (from < t ? t : t + 1) : (from < t ? t - 1 : t);
+    moveLayer(from, to);
+  }
+  window.addEventListener('pointermove', moveLayerDrag, { passive: false });
+  window.addEventListener('pointerup', endLayerDrag);
+  window.addEventListener('pointercancel', endLayerDrag);
+
   on(btnAddLayer, 'click', addLayer);
   on(btnDeleteLayer, 'click', deleteActiveLayer);
   on(btnMergeDown, 'click', mergeDown);
+  on(btnLayerUp, 'click', () => moveLayer(activeLayerIndex, activeLayerIndex + 1));
+  on(btnLayerDown, 'click', () => moveLayer(activeLayerIndex, activeLayerIndex - 1));
 
   let layerPropertySnapshotTaken = false;
   const rememberLayerPropertyStart = () => {
